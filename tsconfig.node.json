@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "target": "ES2022",
+    "outDir": "dist-electron",
+    "paths": {
+      "@electron/*": ["./electron/*"],
+      "@shared/*": ["./shared/*"]
+    }
+  },
+  "include": ["electron/**/*", "shared/**/*"]
+}
