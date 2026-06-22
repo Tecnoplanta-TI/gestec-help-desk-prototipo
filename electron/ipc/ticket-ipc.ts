@@ -27,7 +27,7 @@ const CreateTicketSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(3).max(4000),
   requesterName: z.string().min(2).max(120),
-  requesterEmail: z.string().email(),
+  requesterEmail: emptyToUndefined(z.string().email().optional()),
   requesterUserId: emptyToUndefined(z.string().uuid().optional()),
   costCenter: z.string().min(1).max(50),
   type: z.enum(['incident', 'service_interruption', 'improvement', 'request', 'cancellation']),
@@ -170,11 +170,16 @@ export function registerTicketHandlers(): void {
     if (!parsed.success) ipcError('INVALID_INPUT')
 
     try {
+      const data = sanitizeCreateTicketPayload({
+        ...parsed.data,
+        requesterUserId: parsed.data.requesterUserId ?? user.id,
+      })
       return await createTicket(
         {
-          ...parsed.data,
+          ...data,
+          requesterEmail: data.requesterEmail!,
           source: 'manual',
-          requesterUserId: parsed.data.requesterUserId ?? user.id,
+          requesterUserId: data.requesterUserId ?? user.id,
         },
         user.id,
       )

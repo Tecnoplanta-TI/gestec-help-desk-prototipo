@@ -62,6 +62,7 @@ export default function TicketListPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [formKey, setFormKey] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [priorityFilter, setPriorityFilter] = useState<'all' | TicketPriority>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | string>('all')
@@ -118,7 +119,6 @@ export default function TicketListPage(): JSX.Element {
         sanitizeCreateTicketPayload({
           ...payload,
           requesterName: payload.requesterName || currentUser?.name || 'Solicitante',
-          requesterEmail: payload.requesterEmail || currentUser?.email || '',
           requesterUserId: payload.requesterUserId ?? currentUser?.id,
         }),
       )
@@ -145,7 +145,13 @@ export default function TicketListPage(): JSX.Element {
         title="Tickets"
         description="Abra chamados manualmente e acompanhe o andamento de cada solicitação."
       >
-        <Button onClick={() => setShowForm(true)} className="gap-2">
+        <Button
+          onClick={() => {
+            setFormKey((k) => k + 1)
+            setShowForm(true)
+          }}
+          className="gap-2"
+        >
           <Plus className="h-4 w-4" />
           Novo ticket
         </Button>
@@ -165,6 +171,7 @@ export default function TicketListPage(): JSX.Element {
           {error && showForm ? <StatusAlert variant="error" message={error} /> : null}
 
           <DynamicTicketForm
+            key={formKey}
             currentUser={currentUser}
             isSubmitting={isSubmitting}
             onCancel={() => setShowForm(false)}
@@ -226,7 +233,13 @@ export default function TicketListPage(): JSX.Element {
               title="Nenhum ticket encontrado"
               description="Crie um novo chamado ou ajuste os filtros para ver mais resultados."
               action={
-                <Button onClick={() => setShowForm(true)} className="gap-2">
+                <Button
+                  onClick={() => {
+                    setFormKey((k) => k + 1)
+                    setShowForm(true)
+                  }}
+                  className="gap-2"
+                >
                   <Plus className="h-4 w-4" />
                   Novo ticket
                 </Button>

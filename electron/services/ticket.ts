@@ -131,7 +131,7 @@ async function buildTicket(input: CreateTicketInput): Promise<Ticket> {
     description: input.description,
     requester: {
       name: input.requesterName,
-      email: input.requesterEmail.toLowerCase(),
+      email: (input.requesterEmail ?? 'solicitante@gestec.local').toLowerCase(),
       costCenter: input.costCenter,
     },
     requesterUserId: input.requesterUserId,

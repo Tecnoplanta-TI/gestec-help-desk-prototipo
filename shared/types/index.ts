@@ -208,7 +208,7 @@ export interface CreateTicketPayload {
   title: string
   description: string
   requesterName: string
-  requesterEmail: string
+  requesterEmail?: string
   requesterUserId?: string
   costCenter: string
   type: TicketType

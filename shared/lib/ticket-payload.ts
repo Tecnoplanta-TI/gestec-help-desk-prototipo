@@ -1,5 +1,12 @@
 import type { CreateTicketPayload } from '../../shared/types'
 
+function resolveRequesterEmail(payload: CreateTicketPayload): string {
+  const email = payload.requesterEmail?.trim().toLowerCase()
+  if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return email
+  if (payload.requesterUserId) return `${payload.requesterUserId}@gestec.local`
+  return 'solicitante@gestec.local'
+}
+
 /** Remove strings vazias de campos opcionais antes de enviar ao IPC (evita falha de UUID no Zod). */
 export function sanitizeCreateTicketPayload(payload: CreateTicketPayload): CreateTicketPayload {
   const clean = { ...payload }
@@ -27,7 +34,7 @@ export function sanitizeCreateTicketPayload(payload: CreateTicketPayload): Creat
   clean.title = clean.title.trim()
   clean.description = clean.description.trim()
   clean.requesterName = clean.requesterName.trim()
-  clean.requesterEmail = clean.requesterEmail.trim().toLowerCase()
+  clean.requesterEmail = resolveRequesterEmail(clean)
 
   return clean
 }

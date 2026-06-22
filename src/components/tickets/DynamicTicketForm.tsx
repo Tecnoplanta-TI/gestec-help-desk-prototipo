@@ -114,7 +114,6 @@ export function DynamicTicketForm({
     title: '',
     description: '',
     requesterName: currentUser?.name ?? '',
-    requesterEmail: currentUser?.email ?? '',
     requesterUserId: currentUser?.id,
     costCenter: '',
     type: 'request',
@@ -129,6 +128,15 @@ export function DynamicTicketForm({
     void ipc.listCostCenters().then(setCostCenters).catch(() => undefined)
     void ipc.listUsers().then(setUsers).catch(() => undefined)
   }, [])
+
+  useEffect(() => {
+    if (!currentUser) return
+    setForm((f) => ({
+      ...f,
+      requesterName: f.requesterName.trim() ? f.requesterName : currentUser.name,
+      requesterUserId: f.requesterUserId ?? currentUser.id,
+    }))
+  }, [currentUser])
 
   const service = form.service
 
@@ -148,10 +156,6 @@ export function DynamicTicketForm({
     }
     if (!form.requesterName.trim() || form.requesterName.trim().length < 2) {
       setFieldError('Informe o nome do solicitante (mínimo 2 caracteres).')
-      return
-    }
-    if (!form.requesterEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.requesterEmail)) {
-      setFieldError('Informe um e-mail válido do solicitante.')
       return
     }
     if (form.type !== 'cancellation' && form.description.trim().length < 3) {
@@ -187,6 +191,7 @@ export function DynamicTicketForm({
 
     const payload = sanitizeCreateTicketPayload({
       ...form,
+      requesterEmail: currentUser?.email,
       title: form.title || form.description.slice(0, 80),
       cancellationItems:
         form.type === 'cancellation'
@@ -203,6 +208,23 @@ export function DynamicTicketForm({
           {fieldError}
         </p>
       )}
+
+      <div className="rounded-lg border bg-muted/20 p-4">
+        <p className="mb-3 text-sm font-medium text-foreground">Solicitante</p>
+        <div className="space-y-2">
+          <Label htmlFor="requester-name">
+            Nome <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="requester-name"
+            value={form.requesterName}
+            onChange={(e) => setForm((f) => ({ ...f, requesterName: e.target.value }))}
+            placeholder="Nome completo"
+            autoComplete="name"
+          />
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Tipo solicitação *</Label>
