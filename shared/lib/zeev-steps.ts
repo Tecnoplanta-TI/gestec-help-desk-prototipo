@@ -1,0 +1,65 @@
+/** Step IDs estáveis do workflow Zeev — usados em ticket.status */
+export const ZEEV_STEPS = {
+  draft: 'draft',
+  open: 'open',
+  awaiting_it_manager_approval: 'awaiting_it_manager_approval',
+  improvement_rejected_by_it: 'improvement_rejected_by_it',
+  awaiting_app_manager_approval: 'awaiting_app_manager_approval',
+  improvement_rejected_by_app: 'improvement_rejected_by_app',
+  improvement_approved: 'improvement_approved',
+  in_triage: 'in_triage',
+  triage_rejected: 'triage_rejected',
+  awaiting_requester_adjustment: 'awaiting_requester_adjustment',
+  adjustment_pending: 'adjustment_pending',
+  cancelled_adjustment_timeout: 'cancelled_adjustment_timeout',
+  awaiting_cancellation_approval: 'awaiting_cancellation_approval',
+  cancellation_approved: 'cancellation_approved',
+  cancellation_rejected: 'cancellation_rejected',
+  cancellation_completed: 'cancellation_completed',
+  awaiting_service: 'awaiting_service',
+  in_service: 'in_service',
+  resolved: 'resolved',
+  awaiting_evaluation: 'awaiting_evaluation',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const
+
+export type ZeevStepId = (typeof ZEEV_STEPS)[keyof typeof ZEEV_STEPS]
+
+export const ZEEV_STEP_LABELS: Record<string, string> = {
+  [ZEEV_STEPS.draft]: 'Rascunho',
+  [ZEEV_STEPS.open]: 'Aberto',
+  [ZEEV_STEPS.awaiting_it_manager_approval]: 'Aguardando Gestor TI',
+  [ZEEV_STEPS.improvement_rejected_by_it]: 'Melhoria recusada (TI)',
+  [ZEEV_STEPS.awaiting_app_manager_approval]: 'Aguardando Gestor App',
+  [ZEEV_STEPS.improvement_rejected_by_app]: 'Melhoria recusada (App)',
+  [ZEEV_STEPS.improvement_approved]: 'Melhoria aprovada',
+  [ZEEV_STEPS.in_triage]: 'Em triagem',
+  [ZEEV_STEPS.triage_rejected]: 'Recusado na triagem',
+  [ZEEV_STEPS.awaiting_requester_adjustment]: 'Aguardando ajuste',
+  [ZEEV_STEPS.adjustment_pending]: 'Ajuste em andamento',
+  [ZEEV_STEPS.cancelled_adjustment_timeout]: 'Cancelado (prazo ajuste)',
+  [ZEEV_STEPS.awaiting_cancellation_approval]: 'Aguardando aprovação cancelamento',
+  [ZEEV_STEPS.cancellation_approved]: 'Cancelamento aprovado',
+  [ZEEV_STEPS.cancellation_rejected]: 'Cancelamento recusado',
+  [ZEEV_STEPS.cancellation_completed]: 'Cancelamento concluído',
+  [ZEEV_STEPS.awaiting_service]: 'Aguardando atendimento',
+  [ZEEV_STEPS.in_service]: 'Em atendimento',
+  [ZEEV_STEPS.resolved]: 'Resolvido',
+  [ZEEV_STEPS.awaiting_evaluation]: 'Aguardando avaliação',
+  [ZEEV_STEPS.completed]: 'Concluído',
+  [ZEEV_STEPS.cancelled]: 'Cancelado',
+}
+
+export function getInitialStepForType(
+  type: string,
+  directCancellation?: boolean,
+): ZeevStepId {
+  if (type === 'improvement') return ZEEV_STEPS.awaiting_it_manager_approval
+  if (type === 'cancellation') {
+    return directCancellation
+      ? ZEEV_STEPS.cancellation_completed
+      : ZEEV_STEPS.awaiting_cancellation_approval
+  }
+  return ZEEV_STEPS.in_triage
+}

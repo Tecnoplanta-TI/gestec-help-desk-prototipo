@@ -24,9 +24,16 @@ import type {
   CreateProjectTaskAppointmentPayload,
   CreateProjectTaskPayload,
   CreateSlaRulePayload,
+  ApproveTicketPayload,
+  AppConfig,
+  AuditLog,
+  CreateCostCenterPayload,
+  CreateTicketAppointmentPayload,
   CreateTicketPayload,
+  CreateTicketTaskPayload,
   CreateWorkflowPayload,
   CreateUserPayload,
+  CostCenter,
   DeleteEntityAttachmentPayload,
   DeleteEntityExpensePayload,
   DeleteExpenseAttachmentPayload,
@@ -34,20 +41,27 @@ import type {
   DeleteProjectTaskPayload,
   ExpenseEntityType,
   GetAttachmentDownloadUrlPayload,
+  ListTicketsFilterPayload,
   LoginResult,
   Project,
   ProjectTask,
   ResetPasswordPayload,
   SlaRule,
+  SubmitTicketEvaluationPayload,
   Ticket,
+  TicketReportStats,
   TransitionTicketStepPayload,
+  TriageTicketPayload,
   ToggleUserActivePayload,
+  UpdateCostCenterPayload,
   UpdateEntityExpensePayload,
   UpdateProjectPayload,
   UpdateProjectTaskAppointmentPayload,
   UpdateProjectTaskPayload,
   UpdateDiscordRulePayload,
   UpdateSlaRulePayload,
+  UpdateTicketPayload,
+  UpdateTicketTaskPayload,
   UpdateWorkflowPayload,
   UpdateUserPayload,
   UploadEntityAttachmentPayload,
@@ -86,14 +100,60 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('auth:toggle-user-active', payload),
 
   // ── Tickets ────────────────────────────────────────────────────────────────
-  listTickets: (): Promise<Ticket[]> =>
-    ipcRenderer.invoke('ticket:list'),
+  listTickets: (filter?: ListTicketsFilterPayload): Promise<Ticket[]> =>
+    filter ? ipcRenderer.invoke('ticket:list-filtered', filter) : ipcRenderer.invoke('ticket:list'),
 
   getTicketById: (ticketId: string): Promise<Ticket> =>
     ipcRenderer.invoke('ticket:get-by-id', ticketId),
 
   createTicket: (payload: CreateTicketPayload): Promise<Ticket> =>
     ipcRenderer.invoke('ticket:create', payload),
+
+  updateTicket: (payload: UpdateTicketPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:update', payload),
+
+  approveTicket: (payload: ApproveTicketPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:approve', payload),
+
+  triageTicket: (payload: TriageTicketPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:triage', payload),
+
+  startTicketService: (ticketId: string): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:start-service', ticketId),
+
+  completeTicketService: (ticketId: string): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:complete-service', ticketId),
+
+  submitTicketEvaluation: (payload: SubmitTicketEvaluationPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:submit-evaluation', payload),
+
+  createTicketTask: (payload: CreateTicketTaskPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:create-task', payload),
+
+  updateTicketTask: (payload: UpdateTicketTaskPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:update-task', payload),
+
+  createTicketAppointment: (payload: CreateTicketAppointmentPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:create-appointment', payload),
+
+  listAuditLogs: (entityId: string): Promise<AuditLog[]> =>
+    ipcRenderer.invoke('audit:list', entityId),
+
+  listCostCenters: (): Promise<CostCenter[]> => ipcRenderer.invoke('cost-center:list'),
+
+  createCostCenter: (payload: CreateCostCenterPayload): Promise<CostCenter> =>
+    ipcRenderer.invoke('cost-center:create', payload),
+
+  updateCostCenter: (payload: UpdateCostCenterPayload): Promise<CostCenter> =>
+    ipcRenderer.invoke('cost-center:update', payload),
+
+  getAppConfig: (): Promise<AppConfig> => ipcRenderer.invoke('app-config:get'),
+
+  updateAppConfig: (payload: Partial<Omit<AppConfig, 'id'>>): Promise<AppConfig> =>
+    ipcRenderer.invoke('app-config:update', payload),
+
+  getTicketReportStats: (): Promise<TicketReportStats> =>
+    ipcRenderer.invoke('reports:ticket-stats'),
 
   transitionTicketStep: (payload: TransitionTicketStepPayload): Promise<Ticket> =>
     ipcRenderer.invoke('ticket:transition-step', payload),

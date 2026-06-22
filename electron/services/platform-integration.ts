@@ -1,3 +1,7 @@
+/**
+ * @deprecated Integração Zeev descontinuada — substituição 100% pelo app próprio.
+ * @see specs/zeev-migration/decisions.md
+ */
 import { z } from 'zod'
 import type { CreateTicketInput } from './ticket'
 

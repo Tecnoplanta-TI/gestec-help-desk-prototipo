@@ -1,32 +1,24 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Ticket as TicketIcon } from 'lucide-react'
-import type {
-  CreateTicketPayload,
-  ServiceGroup,
-  Ticket,
-  TicketPriority,
-  TicketType,
-  Workflow,
-} from '../../../shared/types'
+import type { CreateTicketPayload, Ticket, TicketPriority, Workflow } from '../../../shared/types'
+import { ZEEV_STEP_LABELS } from '../../../shared/lib/zeev-steps'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
-import { SlaIndicator } from '@/components/tickets/SlaIndicator'
+import { useAuthStore } from '@/stores/authStore'
+import { DynamicTicketForm } from '@/components/tickets/DynamicTicketForm'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusAlert } from '@/components/shared/StatusAlert'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { InlineLoader } from '@/components/shared/PageLoader'
+import { SlaIndicator } from '@/components/tickets/SlaIndicator'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -46,44 +38,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-const TYPES: TicketType[] = ['incident', 'service_interruption', 'improvement', 'request']
 const PRIORITIES: TicketPriority[] = ['P1', 'P2', 'P3', 'P4']
-const SERVICE_GROUPS: ServiceGroup[] = [
-  'access_accounts',
-  'acquisitions',
-  'dashboards',
-  'emails',
-  'gestec',
-  'printers',
-  'maintenance_upgrade',
-  'software',
-  'network_internet',
-  'erp',
-  'process_platform',
-  'other',
-]
-
-const TYPE_LABEL: Record<TicketType, string> = {
-  incident: 'Incidente',
-  service_interruption: 'Interrupção de serviço',
-  improvement: 'Melhoria',
-  request: 'Solicitação',
-}
-
-const SERVICE_GROUP_LABEL: Record<ServiceGroup, string> = {
-  access_accounts: 'Acessos/contas',
-  acquisitions: 'Aquisições/alocações',
-  dashboards: 'Dashboards',
-  emails: 'Emails',
-  gestec: 'Gestec',
-  printers: 'Impressoras',
-  maintenance_upgrade: 'Manutenção/upgrade',
-  software: 'Programas',
-  network_internet: 'Rede/internet',
-  erp: 'ERP',
-  process_platform: 'Plataforma de processos',
-  other: 'Outro',
-}
 
 const PRIORITY_VARIANT: Record<TicketPriority, 'destructive' | 'default' | 'secondary' | 'outline'> = {
   P1: 'destructive',
@@ -99,6 +54,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 export default function TicketListPage(): JSX.Element {
+  const currentUser = useAuthStore((s) => s.user)
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [workflows, setWorkflows] = useState<Workflow[]>([])
   const [loading, setLoading] = useState(true)
@@ -109,21 +65,10 @@ export default function TicketListPage(): JSX.Element {
   const [priorityFilter, setPriorityFilter] = useState<'all' | TicketPriority>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | string>('all')
 
-  const [form, setForm] = useState<CreateTicketPayload>({
-    title: '',
-    description: '',
-    requesterName: '',
-    requesterEmail: '',
-    costCenter: '',
-    type: 'request',
-    priority: 'P3',
-    serviceGroup: 'other',
-  })
-
   const statuses = useMemo(() => ['all', ...new Set(tickets.map((ticket) => ticket.status))], [tickets])
 
   const stepLabelById = useMemo(() => {
-    const map = new Map<string, string>()
+    const map = new Map<string, string>(Object.entries(ZEEV_STEP_LABELS))
     for (const workflow of workflows) {
       for (const step of workflow.steps) {
         map.set(step.id, step.name)
@@ -163,24 +108,17 @@ export default function TicketListPage(): JSX.Element {
     void loadTickets()
   }, [])
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault()
+  async function handleCreate(payload: CreateTicketPayload): Promise<void> {
     setError(null)
     setFeedback(null)
     setIsSubmitting(true)
     try {
-      const created = await ipc.createTicket(form)
-      setFeedback(`Ticket ${created.id.slice(0, 8)} criado com sucesso.`)
-      setForm({
-        title: '',
-        description: '',
-        requesterName: '',
-        requesterEmail: '',
-        costCenter: '',
-        type: 'request',
-        priority: 'P3',
-        serviceGroup: 'other',
+      const created = await ipc.createTicket({
+        ...payload,
+        requesterName: payload.requesterName || currentUser?.name || '',
+        requesterEmail: payload.requesterEmail || currentUser?.email || '',
       })
+      setFeedback(`Ticket ${created.ticketNumber ?? created.id.slice(0, 8)} criado com sucesso.`)
       setShowForm(false)
       await loadTickets()
     } catch (err) {
@@ -222,128 +160,12 @@ export default function TicketListPage(): JSX.Element {
 
           {error && showForm ? <StatusAlert variant="error" message={error} /> : null}
 
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="title">Título</Label>
-              <Input
-                id="title"
-                value={form.title}
-                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="Resumo do problema"
-                minLength={3}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="costCenter">Centro de custo</Label>
-              <Input
-                id="costCenter"
-                value={form.costCenter}
-                onChange={(e) => setForm((prev) => ({ ...prev, costCenter: e.target.value }))}
-                placeholder="Ex.: TI-001"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="requesterName">Solicitante</Label>
-              <Input
-                id="requesterName"
-                value={form.requesterName}
-                onChange={(e) => setForm((prev) => ({ ...prev, requesterName: e.target.value }))}
-                placeholder="Nome completo"
-                minLength={2}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="requesterEmail">E-mail do solicitante</Label>
-              <Input
-                id="requesterEmail"
-                type="email"
-                value={form.requesterEmail}
-                onChange={(e) => setForm((prev) => ({ ...prev, requesterEmail: e.target.value }))}
-                placeholder="email@empresa.com"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select
-                value={form.type}
-                onValueChange={(value) => setForm((prev) => ({ ...prev, type: value as TicketType }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {TYPE_LABEL[type]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Prioridade</Label>
-              <Select
-                value={form.priority}
-                onValueChange={(value) =>
-                  setForm((prev) => ({ ...prev, priority: value as TicketPriority }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITIES.map((priority) => (
-                    <SelectItem key={priority} value={priority}>
-                      {priority}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Grupo de serviço</Label>
-              <Select
-                value={form.serviceGroup}
-                onValueChange={(value) =>
-                  setForm((prev) => ({ ...prev, serviceGroup: value as ServiceGroup }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SERVICE_GROUPS.map((group) => (
-                    <SelectItem key={group} value={group}>
-                      {SERVICE_GROUP_LABEL[group]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                value={form.description}
-                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Descreva o problema ou solicitação com o máximo de detalhes possível."
-                minLength={3}
-                required
-              />
-            </div>
-            <DialogFooter className="md:col-span-2">
-              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Criando...' : 'Criar ticket'}
-              </Button>
-            </DialogFooter>
-          </form>
+          <DynamicTicketForm
+            currentUser={currentUser}
+            isSubmitting={isSubmitting}
+            onCancel={() => setShowForm(false)}
+            onSubmit={handleCreate}
+          />
         </DialogContent>
       </Dialog>
 

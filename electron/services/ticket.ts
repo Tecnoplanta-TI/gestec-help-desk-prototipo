@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
 import { format } from 'date-fns'
+import { getInitialStepForType } from '../../shared/lib/zeev-steps'
 import { calcDeadline, getSlaStatus } from '../../shared/lib/sla'
 import type {
   AttachmentFile,
@@ -23,6 +24,10 @@ import {
   getDefaultWorkflow,
   getWorkflowById,
 } from './workflow'
+import { generateTicketNumber } from './ticket-number'
+import { writeAuditLog } from './audit'
+import { buildCancellationItems } from './ticket-zeev'
+import { normalizeTicket } from './ticket-helpers'
 
 const CONTAINER = 'tickets'
 
@@ -107,15 +112,19 @@ async function buildTicket(input: CreateTicketInput): Promise<Ticket> {
     throw new Error('WORKFLOW_NOT_CONFIGURED')
   }
 
-  const initialStep = findInitialStep(workflow)
+  const statusStepId = getInitialStepForType(input.type, input.directCancellation)
+  const statusStep = workflow.steps.find((s) => s.id === statusStepId) ?? findInitialStep(workflow)
 
   const matchedRule = await findApplicableSlaRule(input.priority, input.serviceGroup)
-  const deadlineHours = initialStep.slaHours ?? matchedRule?.deadlineHours
+  const deadlineHours = statusStep.slaHours ?? matchedRule?.deadlineHours
   const deadline = deadlineHours ? calcDeadline(now, deadlineHours) : undefined
   const slaStatus = deadline ? getSlaStatus(now, deadline) : 'ok'
+  const ticketNumber = await generateTicketNumber()
 
-  return {
+  return normalizeTicket({
     id: randomUUID(),
+    ticketNumber,
+    openedAt: now,
     externalId: input.externalId,
     source: input.source,
     title: input.title,
@@ -125,12 +134,31 @@ async function buildTicket(input: CreateTicketInput): Promise<Ticket> {
       email: input.requesterEmail.toLowerCase(),
       costCenter: input.costCenter,
     },
+    requesterUserId: input.requesterUserId,
     type: input.type as TicketType,
     priority: input.priority as TicketPriority,
     serviceGroup: input.serviceGroup as ServiceGroup,
-    status: initialStep.id,
+    service: input.service,
+    unavailableSystem: input.unavailableSystem,
+    inoperableInfrastructure: input.inoperableInfrastructure,
+    applicationProcess: input.applicationProcess,
+    improvementAcknowledged: input.improvementAcknowledged,
+    appManagerId: input.appManagerId,
+    assetCode: input.assetCode,
+    supportNotes: input.supportNotes,
+    level: input.level,
+    downtimeMinutes: input.downtimeMinutes,
+    cancellationItems: input.cancellationItems?.length
+      ? buildCancellationItems(input.cancellationItems)
+      : [],
+    cancellationApproverId: input.cancellationApproverId,
+    directCancellation: input.directCancellation,
+    isCancelled: false,
+    status: statusStep.id,
     workflowId: workflow.id,
-    assigneeId: initialStep.defaultAssigneeId,
+    assigneeId: statusStep.defaultAssigneeId,
+    tasks: [],
+    comments: [],
     appointments: [],
     expenses: [],
     attachments: [],
@@ -142,7 +170,7 @@ async function buildTicket(input: CreateTicketInput): Promise<Ticket> {
     },
     createdAt: now,
     updatedAt: now,
-  }
+  })
 }
 
 function withComputedSla(ticket: Ticket): Ticket {
@@ -181,11 +209,21 @@ function ensureAttachment(attachments: AttachmentFile[], attachmentId: string): 
   return attachment
 }
 
-export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
+export async function createTicket(input: CreateTicketInput, createdByUserId?: string): Promise<Ticket> {
   const container = await getContainer(CONTAINER)
   const ticket = await buildTicket(input)
   const { resource } = await container.items.create<Ticket>(ticket)
   const created = withComputedSla(resource as Ticket)
+
+  if (createdByUserId) {
+    void writeAuditLog({
+      entityType: 'ticket',
+      entityId: created.id,
+      action: 'ticket_created',
+      userId: createdByUserId,
+      workflowStep: created.status,
+    })
+  }
 
   void notifyDiscord('ticket_created', { ticket: created })
     .catch((error) => {

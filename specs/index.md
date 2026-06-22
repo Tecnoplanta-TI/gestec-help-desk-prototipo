@@ -13,6 +13,7 @@ Criadas via skill `spec-creator` e validadas via skill `arch-review`.
 | Notificações Discord — Regras, Condições e Templates | specs/discord-phase6/spec.md | done | Fase 6 |
 | Projetos & Tarefas — Gestão Interna, Apontamentos e Valor Hora | specs/projects-phase7/spec.md | done | Fase 7 |
 | Despesas & Anexos — Registro de Custos e Comprovantes | specs/expenses-phase8/spec.md | review | Fase 8 |
+| Migração Zeev — Fluxo completo substituindo plataforma externa | specs/zeev-migration/index.md | draft | Migração Zeev |
 
 ## Legenda de status
 - `draft` — rascunho, aguardando review

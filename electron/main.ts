@@ -23,6 +23,8 @@ import { registerWorkflowHandlers } from './ipc/workflow-ipc'
 import { registerTimerHandlers } from './ipc/timer-ipc'
 import { registerDiscordHandlers } from './ipc/discord-ipc'
 import { registerProjectHandlers } from './ipc/project-ipc'
+import { registerZeevHandlers } from './ipc/zeev-ipc'
+import { ensureZeevDefaultWorkflow } from './services/zeev-workflow-seed'
 import { startApiServer, stopApiServer } from './api/server'
 import { ensureOfflineAdminSession } from './services/session-user'
 
@@ -117,6 +119,11 @@ app.whenReady().then(async () => {
   registerTimerHandlers()
   registerDiscordHandlers()
   registerProjectHandlers()
+  registerZeevHandlers()
+
+  await ensureZeevDefaultWorkflow().catch((error) => {
+    console.error('[zeev] falha ao garantir workflow padrão:', error)
+  })
 
   startApiServer().catch((error) => {
     console.error('[API] erro ao iniciar servidor interno:', error)

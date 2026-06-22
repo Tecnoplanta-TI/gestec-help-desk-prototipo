@@ -22,8 +22,9 @@ const CreateTicketSchema = z.object({
   description: z.string().min(3).max(4000),
   requesterName: z.string().min(2).max(120),
   requesterEmail: z.string().email(),
+  requesterUserId: z.string().uuid().optional(),
   costCenter: z.string().min(1).max(50),
-  type: z.enum(['incident', 'service_interruption', 'improvement', 'request']),
+  type: z.enum(['incident', 'service_interruption', 'improvement', 'request', 'cancellation']),
   priority: z.enum(['P1', 'P2', 'P3', 'P4']),
   serviceGroup: z.enum([
     'access_accounts',
@@ -39,6 +40,30 @@ const CreateTicketSchema = z.object({
     'process_platform',
     'other',
   ]),
+  service: z.enum(['infrastructure', 'system']).optional(),
+  unavailableSystem: z
+    .enum(['3cx', 'ecommerce', 'insoft', 'kinghost', 'other', 'pdv_siger', 'siger'])
+    .optional(),
+  inoperableInfrastructure: z
+    .enum(['internet', 'other', 'network', 'time_clocks', 'local_server', 'ts', 'vm', 'vpn'])
+    .optional(),
+  applicationProcess: z.string().max(200).optional(),
+  improvementAcknowledged: z.boolean().optional(),
+  appManagerId: z.string().uuid().optional(),
+  assetCode: z.string().max(100).optional(),
+  supportNotes: z.string().max(4000).optional(),
+  level: z.enum(['N1', 'N2', 'N3']).optional(),
+  downtimeMinutes: z.number().int().nonnegative().optional(),
+  cancellationItems: z
+    .array(
+      z.object({
+        zeevRequestNumber: z.string().min(1).max(50),
+        justification: z.string().max(2000).optional(),
+      }),
+    )
+    .optional(),
+  cancellationApproverId: z.string().uuid().optional(),
+  directCancellation: z.boolean().optional(),
 })
 
 const CreateTicketExpenseSchema = z.object({
@@ -130,15 +155,19 @@ export function registerTicketHandlers(): void {
   })
 
   ipcMain.handle('ticket:create', async (_event, payload: unknown) => {
-    await requireAuthenticatedUser()
+    const user = await requireAuthenticatedUser()
     const parsed = CreateTicketSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
 
     try {
-      return await createTicket({
-        ...parsed.data,
-        source: 'manual',
-      })
+      return await createTicket(
+        {
+          ...parsed.data,
+          source: 'manual',
+          requesterUserId: parsed.data.requesterUserId ?? user.id,
+        },
+        user.id,
+      )
     } catch (error) {
       mapTicketServiceError(error)
     }

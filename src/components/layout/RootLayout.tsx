@@ -51,9 +51,21 @@ const NAV_GROUPS: NavGroup[] = [
     title: 'Principal',
     items: [
       { to: '/tickets', label: 'Tickets', icon: Ticket },
+      { to: '/tickets/mine', label: 'Meus tickets', icon: Ticket },
       { to: '/tickets/kanban', label: 'Kanban', icon: Columns3 },
       { to: '/projects', label: 'Projetos', icon: FolderKanban },
+      { to: '/reports/dashboard', label: 'Indicadores', icon: BarChart3 },
       { to: '/reports/billing', label: 'Faturamento', icon: BarChart3 },
+    ],
+  },
+  {
+    title: 'Fluxo Zeev',
+    items: [
+      { to: '/approvals/it', label: 'Aprovações TI', icon: GitBranch },
+      { to: '/approvals/app', label: 'Aprovações App', icon: GitBranch },
+      { to: '/triage', label: 'Triagem', icon: Columns3 },
+      { to: '/service', label: 'Atendimento', icon: Timer },
+      { to: '/approvals/cancellation', label: 'Cancelamentos', icon: MessageSquare },
     ],
   },
   {

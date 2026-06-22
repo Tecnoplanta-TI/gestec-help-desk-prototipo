@@ -19,6 +19,41 @@ export type TicketType =
   | 'service_interruption'
   | 'improvement'
   | 'request'
+  | 'cancellation'
+
+export type TicketService = 'infrastructure' | 'system'
+
+export type UnavailableSystem =
+  | '3cx'
+  | 'ecommerce'
+  | 'insoft'
+  | 'kinghost'
+  | 'other'
+  | 'pdv_siger'
+  | 'siger'
+
+export type InoperableInfrastructure =
+  | 'internet'
+  | 'other'
+  | 'network'
+  | 'time_clocks'
+  | 'local_server'
+  | 'ts'
+  | 'vm'
+  | 'vpn'
+
+export type TicketTaskStatus = 'pending' | 'done' | 'cancelled'
+
+export type CancellationItemStatus = 'pending' | 'approved' | 'rejected'
+
+export type TicketQueue =
+  | 'all'
+  | 'mine'
+  | 'triage'
+  | 'service'
+  | 'approvals_it'
+  | 'approvals_app'
+  | 'cancellation'
 
 export type TicketPriority = 'P1' | 'P2' | 'P3' | 'P4'
 
@@ -99,15 +134,176 @@ export interface ToggleUserActivePayload {
   active: boolean
 }
 
+export interface TicketCancellationItem {
+  id: string
+  zeevRequestNumber: string
+  justification?: string
+  status: CancellationItemStatus
+  processedAt?: string
+}
+
+export interface TicketTask {
+  id: string
+  description: string
+  assigneeId?: string
+  assigneeCode?: string
+  dueDate: string
+  status: TicketTaskStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ApprovalDecision {
+  approved: boolean
+  justification?: string
+  decidedBy: string
+  decidedAt: string
+}
+
+export interface TicketComment {
+  id: string
+  authorId: string
+  body: string
+  isInternal: boolean
+  createdAt: string
+}
+
+export interface AuditLog {
+  id: string
+  entityType: 'ticket' | 'user'
+  entityId: string
+  action: string
+  field?: string
+  oldValue?: string
+  newValue?: string
+  userId: string
+  workflowStep?: string
+  justification?: string
+  createdAt: string
+}
+
+export interface AppConfig {
+  id: 'default'
+  npsLowScoreThreshold: number
+  adjustmentTimeoutDays: number
+  adjustmentTimeoutEnabled: boolean
+  defaultTriageAssigneeId?: string
+  defaultCancellationApproverId?: string
+  emailEnabled: boolean
+  smtpHost?: string
+  smtpPort?: number
+  smtpUser?: string
+  smtpFrom?: string
+  updatedAt: string
+}
+
 export interface CreateTicketPayload {
   title: string
   description: string
   requesterName: string
   requesterEmail: string
+  requesterUserId?: string
   costCenter: string
   type: TicketType
   priority: TicketPriority
   serviceGroup: ServiceGroup
+  service?: TicketService
+  unavailableSystem?: UnavailableSystem
+  inoperableInfrastructure?: InoperableInfrastructure
+  applicationProcess?: string
+  improvementAcknowledged?: boolean
+  appManagerId?: string
+  assetCode?: string
+  supportNotes?: string
+  level?: TicketLevel
+  downtimeMinutes?: number
+  cancellationItems?: Array<{ zeevRequestNumber: string; justification?: string }>
+  cancellationApproverId?: string
+  directCancellation?: boolean
+}
+
+export interface UpdateTicketPayload {
+  ticketId: string
+  title?: string
+  description?: string
+  priority?: TicketPriority
+  service?: TicketService
+  unavailableSystem?: UnavailableSystem
+  inoperableInfrastructure?: InoperableInfrastructure
+  applicationProcess?: string
+  assetCode?: string
+  supportNotes?: string
+  level?: TicketLevel
+  downtimeMinutes?: number
+  expectedUpdatedAt?: string
+}
+
+export interface ApproveTicketPayload {
+  ticketId: string
+  approved: boolean
+  justification?: string
+  stage: 'it_manager' | 'app_manager' | 'cancellation'
+}
+
+export interface TriageTicketPayload {
+  ticketId: string
+  decision: 'approve' | 'reject' | 'adjustment'
+  assigneeId?: string
+  justification?: string
+  costCenter?: string
+  type?: TicketType
+  priority?: TicketPriority
+  level?: TicketLevel
+  serviceGroup?: ServiceGroup
+}
+
+export interface CreateTicketTaskPayload {
+  ticketId: string
+  description: string
+  assigneeId?: string
+  dueDate: string
+}
+
+export interface UpdateTicketTaskPayload {
+  ticketId: string
+  taskId: string
+  description?: string
+  assigneeId?: string | null
+  dueDate?: string
+  status?: TicketTaskStatus
+}
+
+export interface CreateTicketAppointmentPayload {
+  ticketId: string
+  date: string
+  startTime: string
+  endTime: string
+  note?: string
+}
+
+export interface SubmitTicketEvaluationPayload {
+  ticketId: string
+  metExpectation: boolean
+  score: number
+  expectation?: string
+  feedback?: string
+  npsJustification?: string
+}
+
+export interface ListTicketsFilterPayload {
+  queue?: TicketQueue
+}
+
+export interface CreateCostCenterPayload {
+  code: string
+  name: string
+}
+
+export interface UpdateCostCenterPayload {
+  id: string
+  code?: string
+  name?: string
+  active?: boolean
 }
 
 export interface CreateSlaRulePayload {
@@ -310,15 +506,35 @@ export interface TicketSla {
 
 export interface Ticket {
   id: string
-  externalId?: string // ID na plataforma externa
+  ticketNumber?: string
+  openedAt?: string
+  externalId?: string // ID na plataforma externa (legado)
   source: TicketSource
   title: string
   description: string
   requester: TicketRequester
+  requesterUserId?: string
   type: TicketType
   priority: TicketPriority
   serviceGroup: ServiceGroup
-  status: string // nome da etapa atual do workflow
+  service?: TicketService
+  unavailableSystem?: UnavailableSystem
+  inoperableInfrastructure?: InoperableInfrastructure
+  applicationProcess?: string
+  improvementAcknowledged?: boolean
+  appManagerId?: string
+  appManagerCode?: string
+  triageAssigneeId?: string
+  isCancelled?: boolean
+  cancellationItems?: TicketCancellationItem[]
+  cancellationApproverId?: string
+  directCancellation?: boolean
+  itManagerDecision?: ApprovalDecision
+  appManagerDecision?: ApprovalDecision
+  cancellationDecision?: ApprovalDecision
+  adjustmentRequestedAt?: string
+  adjustmentDeadline?: string
+  status: string // step ID do workflow
   workflowId: string
   assigneeId?: string
   // Campos internos TI
@@ -329,6 +545,8 @@ export interface Ticket {
   supportNotes?: string
   downtimeMinutes?: number
   // Registros
+  tasks?: TicketTask[]
+  comments?: TicketComment[]
   appointments: Appointment[]
   expenses: Expense[]
   attachments: AttachmentFile[]
@@ -498,6 +716,17 @@ export interface CostCenter {
   code: string
   name: string
   active: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface TicketReportStats {
+  totalOpen: number
+  byType: Record<string, number>
+  byPriority: Record<string, number>
+  byStatus: Record<string, number>
+  averageScore: number | null
+  evaluationCount: number
 }
 
 // ─── Notificações Discord ─────────────────────────────────────────────────────
@@ -549,9 +778,25 @@ export interface ElectronAPI {
   resetPassword: (payload: ResetPasswordPayload) => Promise<void>
   toggleUserActive: (payload: ToggleUserActivePayload) => Promise<User>
   // Tickets
-  listTickets: () => Promise<Ticket[]>
+  listTickets: (filter?: ListTicketsFilterPayload) => Promise<Ticket[]>
   getTicketById: (ticketId: string) => Promise<Ticket>
   createTicket: (payload: CreateTicketPayload) => Promise<Ticket>
+  updateTicket: (payload: UpdateTicketPayload) => Promise<Ticket>
+  approveTicket: (payload: ApproveTicketPayload) => Promise<Ticket>
+  triageTicket: (payload: TriageTicketPayload) => Promise<Ticket>
+  startTicketService: (ticketId: string) => Promise<Ticket>
+  completeTicketService: (ticketId: string) => Promise<Ticket>
+  submitTicketEvaluation: (payload: SubmitTicketEvaluationPayload) => Promise<Ticket>
+  createTicketTask: (payload: CreateTicketTaskPayload) => Promise<Ticket>
+  updateTicketTask: (payload: UpdateTicketTaskPayload) => Promise<Ticket>
+  createTicketAppointment: (payload: CreateTicketAppointmentPayload) => Promise<Ticket>
+  listAuditLogs: (entityId: string) => Promise<AuditLog[]>
+  listCostCenters: () => Promise<CostCenter[]>
+  createCostCenter: (payload: CreateCostCenterPayload) => Promise<CostCenter>
+  updateCostCenter: (payload: UpdateCostCenterPayload) => Promise<CostCenter>
+  getAppConfig: () => Promise<AppConfig>
+  updateAppConfig: (payload: Partial<Omit<AppConfig, 'id'>>) => Promise<AppConfig>
+  getTicketReportStats: () => Promise<TicketReportStats>
   createEntityExpense: (payload: CreateEntityExpensePayload) => Promise<Ticket | Project>
   updateEntityExpense: (payload: UpdateEntityExpensePayload) => Promise<Ticket | Project>
   deleteEntityExpense: (payload: DeleteEntityExpensePayload) => Promise<Ticket | Project>

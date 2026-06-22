@@ -1,5 +1,7 @@
 # Spec: Tickets — Abertura Manual + Webhook + Visualização
 
+> **Nota (2026-06-17):** Superseded parcialmente por `specs/zeev-migration/` — webhook Zeev descontinuado; abertura completa no app próprio.
+
 **Status:** done
 **Data:** 2026-04-03
 **Fase do roadmap:** Fase 2 — Tickets (abertura manual + webhook)

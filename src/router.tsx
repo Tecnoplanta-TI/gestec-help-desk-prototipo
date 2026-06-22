@@ -32,6 +32,13 @@ const TicketKanbanPage = lazy(() => import('./pages/tickets/TicketKanbanPage'))
 const TicketDetailPage = lazy(() => import('./pages/tickets/TicketDetailPage'))
 const ProjectListPage = lazy(() => import('./pages/projects/ProjectListPage'))
 const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'))
+const TriagePage = lazy(() => import('./pages/triage/TriagePage'))
+const TriageDetailPage = lazy(() => import('./pages/triage/TriageDetailPage'))
+const ServicePage = lazy(() => import('./pages/service/ServicePage'))
+const ApprovalsItPage = lazy(() => import('./pages/approvals/ApprovalsItPage'))
+const ApprovalsAppPage = lazy(() => import('./pages/approvals/ApprovalsAppPage'))
+const CancellationApprovalsPage = lazy(() => import('./pages/approvals/CancellationApprovalsPage'))
+const ReportsDashboardPage = lazy(() => import('./pages/reports/ReportsDashboardPage'))
 const BillingReportPage = lazy(() => import('./pages/reports/BillingReportPage'))
 const FloatingTimerPage = lazy(() => import('./pages/FloatingTimerPage'))
 const WorkflowsPage = lazy(() => import('./pages/settings/WorkflowsPage'))
@@ -64,10 +71,18 @@ export const router = createHashRouter([
     children: [
       { index: true, element: <Navigate to="/tickets" replace /> },
       { path: 'tickets', element: withSuspense(TicketListPage) },
+      { path: 'tickets/mine', element: withSuspense(TicketListPage) },
       { path: 'tickets/kanban', element: withSuspense(TicketKanbanPage) },
       { path: 'tickets/:id', element: withSuspense(TicketDetailPage) },
+      { path: 'triage', element: withSuspense(TriagePage) },
+      { path: 'triage/:id', element: withSuspense(TriageDetailPage) },
+      { path: 'service', element: withSuspense(ServicePage) },
+      { path: 'approvals/it', element: withSuspense(ApprovalsItPage) },
+      { path: 'approvals/app', element: withSuspense(ApprovalsAppPage) },
+      { path: 'approvals/cancellation', element: withSuspense(CancellationApprovalsPage) },
       { path: 'projects', element: withSuspense(ProjectListPage) },
       { path: 'projects/:id', element: withSuspense(ProjectDetailPage) },
+      { path: 'reports/dashboard', element: withSuspense(ReportsDashboardPage) },
       { path: 'reports/billing', element: withSuspense(BillingReportPage) },
       {
         path: 'settings',

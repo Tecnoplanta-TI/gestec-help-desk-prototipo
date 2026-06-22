@@ -15,7 +15,9 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react'
-import type { AttachmentFile, Expense, Ticket, Workflow } from '../../../shared/types'
+import type { AttachmentFile, Expense, Ticket, User, Workflow } from '../../../shared/types'
+import { ZEEV_STEP_LABELS } from '../../../shared/lib/zeev-steps'
+import { TicketZeevActions } from '@/components/tickets/TicketZeevActions'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { fileToBase64 } from '@/lib/files'
@@ -68,6 +70,7 @@ export default function TicketDetailPage(): JSX.Element {
 
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
+  const [users, setUsers] = useState<User[]>([])
   const [nextStepId, setNextStepId] = useState('')
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [isTimerLoading, setIsTimerLoading] = useState(false)
@@ -109,6 +112,7 @@ export default function TicketDetailPage(): JSX.Element {
         const workflows = await ipc.listWorkflows()
         const currentWorkflow = workflows.find((item) => item.id === result.workflowId) ?? null
         setWorkflow(currentWorkflow)
+        void ipc.listUsers().then(setUsers).catch(() => undefined)
       } catch (err) {
         setError(getErrorMessage(err))
       } finally {
@@ -379,6 +383,18 @@ export default function TicketDetailPage(): JSX.Element {
 
       {error ? <StatusAlert variant="error" message={error} /> : null}
       {feedback ? <StatusAlert variant="success" message={feedback} /> : null}
+
+      {ticket ? (
+        <TicketZeevActions
+          ticket={ticket}
+          user={currentUser}
+          users={users}
+          onUpdated={(updated) => {
+            setTicket(updated)
+            setFeedback('Ticket atualizado.')
+          }}
+        />
+      ) : null}
 
       {loading ? (
         <InlineLoader rows={4} />
