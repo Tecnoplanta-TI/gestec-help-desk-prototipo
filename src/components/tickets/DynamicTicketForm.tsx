@@ -10,7 +10,8 @@ import type {
   InoperableInfrastructure,
   User,
 } from '../../../shared/types'
-import { isFieldVisible } from '../../../shared/lib/form-rules'
+import { isFieldVisible, getRequiredFields } from '../../../shared/lib/form-rules'
+import { sanitizeCreateTicketPayload } from '../../../shared/lib/ticket-payload'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -114,12 +115,14 @@ export function DynamicTicketForm({
     description: '',
     requesterName: currentUser?.name ?? '',
     requesterEmail: currentUser?.email ?? '',
+    requesterUserId: currentUser?.id,
     costCenter: '',
     type: 'request',
     priority: 'P3',
     serviceGroup: 'gestec',
     ...initial,
   })
+  const [fieldError, setFieldError] = useState<string | null>(null)
   const [cancelRows, setCancelRows] = useState([{ zeevRequestNumber: '', justification: '' }])
 
   useEffect(() => {
@@ -137,19 +140,69 @@ export function DynamicTicketForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const payload: CreateTicketPayload = {
+    setFieldError(null)
+
+    if (!form.costCenter) {
+      setFieldError('Selecione o centro de custo.')
+      return
+    }
+    if (!form.requesterName.trim() || form.requesterName.trim().length < 2) {
+      setFieldError('Informe o nome do solicitante (mínimo 2 caracteres).')
+      return
+    }
+    if (!form.requesterEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.requesterEmail)) {
+      setFieldError('Informe um e-mail válido do solicitante.')
+      return
+    }
+    if (form.type !== 'cancellation' && form.description.trim().length < 3) {
+      setFieldError('A solicitação deve ter pelo menos 3 caracteres.')
+      return
+    }
+
+    const required = getRequiredFields(form.type, form.service)
+    if (required.has('service') && !form.service) {
+      setFieldError('Selecione o tipo de serviço (Sistema ou Infraestrutura).')
+      return
+    }
+    if (required.has('unavailableSystem') && !form.unavailableSystem) {
+      setFieldError('Selecione o sistema indisponível.')
+      return
+    }
+    if (required.has('inoperableInfrastructure') && !form.inoperableInfrastructure) {
+      setFieldError('Selecione a infraestrutura inoperante.')
+      return
+    }
+    if (required.has('improvementAcknowledged') && !form.improvementAcknowledged) {
+      setFieldError('Confirme a ciência sobre o tipo Melhoria.')
+      return
+    }
+    if (required.has('applicationProcess') && !form.applicationProcess?.trim()) {
+      setFieldError('Informe o aplicativo ou processo.')
+      return
+    }
+    if (required.has('appManagerId') && !form.appManagerId) {
+      setFieldError('Selecione o gestor do aplicativo.')
+      return
+    }
+
+    const payload = sanitizeCreateTicketPayload({
       ...form,
       title: form.title || form.description.slice(0, 80),
       cancellationItems:
         form.type === 'cancellation'
           ? cancelRows.filter((r) => r.zeevRequestNumber.trim())
           : undefined,
-    }
+    })
     await onSubmit(payload)
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {fieldError && (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {fieldError}
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Tipo solicitação *</Label>

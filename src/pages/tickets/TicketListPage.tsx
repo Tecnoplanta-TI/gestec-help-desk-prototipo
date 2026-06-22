@@ -6,6 +6,7 @@ import { ZEEV_STEP_LABELS } from '../../../shared/lib/zeev-steps'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { useAuthStore } from '@/stores/authStore'
+import { sanitizeCreateTicketPayload } from '../../../shared/lib/ticket-payload'
 import { DynamicTicketForm } from '@/components/tickets/DynamicTicketForm'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusAlert } from '@/components/shared/StatusAlert'
@@ -113,11 +114,14 @@ export default function TicketListPage(): JSX.Element {
     setFeedback(null)
     setIsSubmitting(true)
     try {
-      const created = await ipc.createTicket({
-        ...payload,
-        requesterName: payload.requesterName || currentUser?.name || '',
-        requesterEmail: payload.requesterEmail || currentUser?.email || '',
-      })
+      const created = await ipc.createTicket(
+        sanitizeCreateTicketPayload({
+          ...payload,
+          requesterName: payload.requesterName || currentUser?.name || 'Solicitante',
+          requesterEmail: payload.requesterEmail || currentUser?.email || '',
+          requesterUserId: payload.requesterUserId ?? currentUser?.id,
+        }),
+      )
       setFeedback(`Ticket ${created.ticketNumber ?? created.id.slice(0, 8)} criado com sucesso.`)
       setShowForm(false)
       await loadTickets()

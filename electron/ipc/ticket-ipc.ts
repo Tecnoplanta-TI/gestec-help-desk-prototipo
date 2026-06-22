@@ -1,6 +1,8 @@
 import { ipcMain } from 'electron'
 import { z } from 'zod'
 import { resolveAuthenticatedUser } from '../services/session-user'
+import { sanitizeCreateTicketPayload } from '../../shared/lib/ticket-payload'
+import type { CreateTicketPayload } from '../../shared/types'
 import {
   createTicket,
   createTicketExpense,
@@ -17,12 +19,16 @@ import {
   uploadTicketExpenseAttachment,
 } from '../services/ticket'
 
+function emptyToUndefined<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((val) => (val === '' || val === null ? undefined : val), schema)
+}
+
 const CreateTicketSchema = z.object({
-  title: z.string().min(3).max(200),
+  title: z.string().min(1).max(200),
   description: z.string().min(3).max(4000),
   requesterName: z.string().min(2).max(120),
   requesterEmail: z.string().email(),
-  requesterUserId: z.string().uuid().optional(),
+  requesterUserId: emptyToUndefined(z.string().uuid().optional()),
   costCenter: z.string().min(1).max(50),
   type: z.enum(['incident', 'service_interruption', 'improvement', 'request', 'cancellation']),
   priority: z.enum(['P1', 'P2', 'P3', 'P4']),
@@ -49,7 +55,7 @@ const CreateTicketSchema = z.object({
     .optional(),
   applicationProcess: z.string().max(200).optional(),
   improvementAcknowledged: z.boolean().optional(),
-  appManagerId: z.string().uuid().optional(),
+  appManagerId: emptyToUndefined(z.string().uuid().optional()),
   assetCode: z.string().max(100).optional(),
   supportNotes: z.string().max(4000).optional(),
   level: z.enum(['N1', 'N2', 'N3']).optional(),
@@ -62,7 +68,7 @@ const CreateTicketSchema = z.object({
       }),
     )
     .optional(),
-  cancellationApproverId: z.string().uuid().optional(),
+  cancellationApproverId: emptyToUndefined(z.string().uuid().optional()),
   directCancellation: z.boolean().optional(),
 })
 
@@ -156,7 +162,11 @@ export function registerTicketHandlers(): void {
 
   ipcMain.handle('ticket:create', async (_event, payload: unknown) => {
     const user = await requireAuthenticatedUser()
-    const parsed = CreateTicketSchema.safeParse(payload)
+    const sanitized =
+      payload && typeof payload === 'object'
+        ? sanitizeCreateTicketPayload(payload as CreateTicketPayload)
+        : payload
+    const parsed = CreateTicketSchema.safeParse(sanitized)
     if (!parsed.success) ipcError('INVALID_INPUT')
 
     try {

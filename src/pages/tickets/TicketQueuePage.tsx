@@ -23,6 +23,7 @@ const QUEUE_TITLES: Record<TicketQueue, string> = {
   mine: 'Meus tickets',
   triage: 'Fila de triagem',
   service: 'Fila de atendimento',
+  completion: 'Aprovar conclusão',
   approvals_it: 'Aprovações — Gestor TI',
   approvals_app: 'Aprovações — Gestor App',
   cancellation: 'Aprovações — Cancelamento',

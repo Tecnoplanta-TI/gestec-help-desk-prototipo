@@ -22,6 +22,7 @@ export const ZEEV_STEPS = {
   awaiting_evaluation: 'awaiting_evaluation',
   completed: 'completed',
   cancelled: 'cancelled',
+  awaiting_completion_approval: 'awaiting_completion_approval',
 } as const
 
 export type ZeevStepId = (typeof ZEEV_STEPS)[keyof typeof ZEEV_STEPS]
@@ -45,6 +46,7 @@ export const ZEEV_STEP_LABELS: Record<string, string> = {
   [ZEEV_STEPS.cancellation_completed]: 'Cancelamento concluído',
   [ZEEV_STEPS.awaiting_service]: 'Aguardando atendimento',
   [ZEEV_STEPS.in_service]: 'Em atendimento',
+  [ZEEV_STEPS.awaiting_completion_approval]: 'Aguardando aprovação de conclusão',
   [ZEEV_STEPS.resolved]: 'Resolvido',
   [ZEEV_STEPS.awaiting_evaluation]: 'Aguardando avaliação',
   [ZEEV_STEPS.completed]: 'Concluído',

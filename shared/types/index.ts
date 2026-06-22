@@ -51,6 +51,7 @@ export type TicketQueue =
   | 'mine'
   | 'triage'
   | 'service'
+  | 'completion'
   | 'approvals_it'
   | 'approvals_app'
   | 'cancellation'
@@ -303,6 +304,18 @@ export interface UpdateServiceTicketPayload {
   additionalAssigneeId?: string | null
   supportNotes?: string
   deliveredEquipment?: DeliveredEquipmentItem[]
+  createZeevUser?: boolean
+  createEmail?: boolean
+  facilitatorChecklist?: string
+  securitySealChanged?: boolean
+  securitySealCode?: string
+  newSecuritySealCode?: string
+}
+
+export interface ApproveCompletionPayload {
+  ticketId: string
+  approved: boolean
+  justification?: string
 }
 
 export interface CompleteTicketServicePayload {
@@ -576,6 +589,10 @@ export interface Ticket {
   additionalAssigneeId?: string
   serviceDueDate?: string
   deliveredEquipment?: DeliveredEquipmentItem[]
+  createZeevUser?: boolean
+  createEmail?: boolean
+  facilitatorChecklist?: string
+  securitySealChanged?: boolean
   // Campos internos TI
   level?: TicketLevel
   assetCode?: string
@@ -826,6 +843,7 @@ export interface ElectronAPI {
   startTicketService: (ticketId: string) => Promise<Ticket>
   completeTicketService: (payload: CompleteTicketServicePayload) => Promise<Ticket>
   updateServiceTicket: (payload: UpdateServiceTicketPayload) => Promise<Ticket>
+  approveTicketCompletion: (payload: ApproveCompletionPayload) => Promise<Ticket>
   submitTicketEvaluation: (payload: SubmitTicketEvaluationPayload) => Promise<Ticket>
   createTicketTask: (payload: CreateTicketTaskPayload) => Promise<Ticket>
   updateTicketTask: (payload: UpdateTicketTaskPayload) => Promise<Ticket>

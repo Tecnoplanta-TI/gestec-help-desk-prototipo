@@ -102,6 +102,18 @@ export default function ServiceDetailPage(): JSX.Element {
   const [apptEnd, setApptEnd] = useState('10:00')
   const [apptNote, setApptNote] = useState('')
 
+  const [createZeevUser, setCreateZeevUser] = useState(false)
+  const [createEmail, setCreateEmail] = useState(false)
+  const [facilitatorChecklist, setFacilitatorChecklist] = useState('')
+  const [securitySealChanged, setSecuritySealChanged] = useState(false)
+  const [securitySealCode, setSecuritySealCode] = useState('')
+  const [newSecuritySealCode, setNewSecuritySealCode] = useState('')
+  const [expenseDesc, setExpenseDesc] = useState('')
+  const [expenseQty, setExpenseQty] = useState('1')
+  const [expenseCost, setExpenseCost] = useState('0')
+
+  const showFacilitator = serviceGroup === 'access_accounts'
+
   const isInService = ticket?.status === ZEEV_STEPS.in_service
   const isAwaiting = ticket?.status === ZEEV_STEPS.awaiting_service
   const canEdit = isInService
@@ -138,6 +150,12 @@ export default function ServiceDetailPage(): JSX.Element {
       setResolutionSummary(ticketData.supportNotes ?? '')
       setEquipment(ticketData.deliveredEquipment ?? [])
       setApptTechnicianId(ticketData.assigneeId ?? '')
+      setCreateZeevUser(ticketData.createZeevUser ?? false)
+      setCreateEmail(ticketData.createEmail ?? false)
+      setFacilitatorChecklist(ticketData.facilitatorChecklist ?? '')
+      setSecuritySealChanged(ticketData.securitySealChanged ?? false)
+      setSecuritySealCode(ticketData.securitySealCode ?? '')
+      setNewSecuritySealCode(ticketData.newSecuritySealCode ?? '')
     } catch (e) {
       setError(getIpcErrorMessage(e))
     } finally {
@@ -162,6 +180,12 @@ export default function ServiceDetailPage(): JSX.Element {
         additionalAssigneeId: additionalAssigneeId || null,
         supportNotes: resolutionSummary,
         deliveredEquipment: equipment,
+        createZeevUser,
+        createEmail,
+        facilitatorChecklist: facilitatorChecklist || undefined,
+        securitySealChanged,
+        securitySealCode: securitySealCode || undefined,
+        newSecuritySealCode: newSecuritySealCode || undefined,
       })
       setTicket(updated)
       return updated
@@ -172,6 +196,56 @@ export default function ServiceDetailPage(): JSX.Element {
         description: getIpcErrorMessage(e),
       })
       return null
+    }
+  }
+
+  async function handleAddExpense(): Promise<void> {
+    if (!ticket || !expenseDesc.trim()) return
+    const quantity = Number(expenseQty)
+    const unitValue = Number(expenseCost)
+    if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitValue)) return
+    setBusy(true)
+    try {
+      const updated = await ipc.createEntityExpense({
+        entityType: 'ticket',
+        entityId: ticket.id,
+        description: expenseDesc.trim(),
+        quantity,
+        unitValue,
+      })
+      setTicket(updated as Ticket)
+      setExpenseDesc('')
+      setExpenseQty('1')
+      setExpenseCost('0')
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao lançar custo',
+        description: getIpcErrorMessage(e),
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleDeleteExpense(expenseId: string): Promise<void> {
+    if (!ticket) return
+    setBusy(true)
+    try {
+      const updated = await ipc.deleteEntityExpense({
+        entityType: 'ticket',
+        entityId: ticket.id,
+        expenseId,
+      })
+      setTicket(updated as Ticket)
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao excluir',
+        description: getIpcErrorMessage(e),
+      })
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -203,6 +277,14 @@ export default function ServiceDetailPage(): JSX.Element {
       })
       return
     }
+    if (!serviceDueDate) {
+      toast({
+        variant: 'destructive',
+        title: 'Prazo obrigatório',
+        description: 'Informe o prazo do atendimento.',
+      })
+      return
+    }
     setBusy(true)
     try {
       await ipc.updateServiceTicket({
@@ -211,16 +293,22 @@ export default function ServiceDetailPage(): JSX.Element {
         priority,
         level,
         serviceGroup,
-        serviceDueDate: serviceDueDate || undefined,
+        serviceDueDate,
         additionalAssigneeId: additionalAssigneeId || null,
         deliveredEquipment: equipment,
+        createZeevUser,
+        createEmail,
+        facilitatorChecklist: facilitatorChecklist || undefined,
+        securitySealChanged,
+        securitySealCode: securitySealCode || undefined,
+        newSecuritySealCode: newSecuritySealCode || undefined,
       })
       await ipc.completeTicketService({
         ticketId: ticket.id,
         resolutionSummary: resolutionSummary.trim(),
         deliveredEquipment: equipment,
       })
-      toast({ title: 'Atendimento concluído' })
+      toast({ title: 'Enviado para aprovação de conclusão' })
       navigate('/service')
     } catch (e) {
       toast({
@@ -358,7 +446,11 @@ export default function ServiceDetailPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Contato inicial · ${ticket.ticketNumber ?? ticket.id.slice(0, 8)}`}
+        title={
+          isAwaiting
+            ? `Contato inicial · ${ticket.ticketNumber ?? ticket.id.slice(0, 8)}`
+            : `Atender solicitação · ${ticket.ticketNumber ?? ticket.id.slice(0, 8)}`
+        }
         description={ticket.title}
       >
         <Button variant="outline" size="sm" asChild>
@@ -515,7 +607,9 @@ export default function ServiceDetailPage(): JSX.Element {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Prazo do atendimento</Label>
+                <Label>
+                  Prazo do atendimento <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   type="date"
                   value={serviceDueDate}
@@ -551,6 +645,122 @@ export default function ServiceDetailPage(): JSX.Element {
               </div>
             </CardContent>
           </Card>
+
+          {isInService && showFacilitator && (
+            <Card className="surface-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Facilitador</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Criar usuário no Zeev?</Label>
+                  <Select
+                    value={createZeevUser ? 'yes' : 'no'}
+                    onValueChange={(v) => {
+                      setCreateZeevUser(v === 'yes')
+                      void persistServiceFields()
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no">Não</SelectItem>
+                      <SelectItem value="yes">Sim</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Criar e-mail?</Label>
+                  <Select
+                    value={createEmail ? 'yes' : 'no'}
+                    onValueChange={(v) => {
+                      setCreateEmail(v === 'yes')
+                      void persistServiceFields()
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no">Não</SelectItem>
+                      <SelectItem value="yes">Sim</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Realizar checklist?</Label>
+                  <Select
+                    value={facilitatorChecklist || '__none__'}
+                    onValueChange={(v) => {
+                      setFacilitatorChecklist(v === '__none__' ? '' : v)
+                      void persistServiceFields()
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Selecione</SelectItem>
+                      <SelectItem value="sim">Sim</SelectItem>
+                      <SelectItem value="nao">Não</SelectItem>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {isInService && (
+            <Card className="surface-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Lacre de segurança</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>
+                    Houve troca do lacre? <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={securitySealChanged ? 'yes' : 'no'}
+                    onValueChange={(v) => {
+                      setSecuritySealChanged(v === 'yes')
+                      void persistServiceFields()
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no">Não</SelectItem>
+                      <SelectItem value="yes">Sim</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {securitySealChanged && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Código anterior</Label>
+                      <Input
+                        value={securitySealCode}
+                        onChange={(e) => setSecuritySealCode(e.target.value)}
+                        onBlur={() => void persistServiceFields()}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Novo código</Label>
+                      <Input
+                        value={newSecuritySealCode}
+                        onChange={(e) => setNewSecuritySealCode(e.target.value)}
+                        onBlur={() => void persistServiceFields()}
+                      />
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {isInService && (
             <>
@@ -671,6 +881,80 @@ export default function ServiceDetailPage(): JSX.Element {
                             <TableCell className="text-sm text-muted-foreground">
                               {formatDuration(appt.totalMinutes)}
                             </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="surface-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Tabela de cobrança</CardTitle>
+                  <CardDescription>Materiais e serviços utilizados no atendimento.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-2 sm:grid-cols-4">
+                    <Input
+                      className="sm:col-span-2"
+                      placeholder="Material/serviço"
+                      value={expenseDesc}
+                      onChange={(e) => setExpenseDesc(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="Qtd"
+                      value={expenseQty}
+                      onChange={(e) => setExpenseQty(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Custo unit."
+                      value={expenseCost}
+                      onChange={(e) => setExpenseCost(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || !expenseDesc.trim()}
+                    onClick={() => void handleAddExpense()}
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    Inserir
+                  </Button>
+                  {(ticket.expenses ?? []).length > 0 && (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10" />
+                          <TableHead>Material/serviço</TableHead>
+                          <TableHead>Qtd</TableHead>
+                          <TableHead>Custo</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(ticket.expenses ?? []).map((exp) => (
+                          <TableRow key={exp.id}>
+                            <TableCell>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => void handleDeleteExpense(exp.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                            <TableCell>{exp.description}</TableCell>
+                            <TableCell>{exp.quantity}</TableCell>
+                            <TableCell>{formatCurrency(exp.totalValue)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -851,7 +1135,7 @@ export default function ServiceDetailPage(): JSX.Element {
                   onClick={() => void handleComplete()}
                 >
                   <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Concluir atendimento
+                  Enviar para aprovação
                 </Button>
               )}
               <Button variant="outline" className="w-full" asChild>

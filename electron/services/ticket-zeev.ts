@@ -4,6 +4,7 @@ import { hasPermission } from '../../shared/lib/permissions'
 import { ZEEV_STEPS } from '../../shared/lib/zeev-steps'
 import type {
   AddTicketCommentPayload,
+  ApproveCompletionPayload,
   ApproveTicketPayload,
   CompleteTicketServicePayload,
   CreateTicketAppointmentPayload,
@@ -308,6 +309,18 @@ export async function updateServiceTicket(
     ...(payload.deliveredEquipment !== undefined
       ? { deliveredEquipment: payload.deliveredEquipment }
       : {}),
+    ...(payload.createZeevUser !== undefined ? { createZeevUser: payload.createZeevUser } : {}),
+    ...(payload.createEmail !== undefined ? { createEmail: payload.createEmail } : {}),
+    ...(payload.facilitatorChecklist !== undefined
+      ? { facilitatorChecklist: payload.facilitatorChecklist }
+      : {}),
+    ...(payload.securitySealChanged !== undefined
+      ? { securitySealChanged: payload.securitySealChanged }
+      : {}),
+    ...(payload.securitySealCode !== undefined ? { securitySealCode: payload.securitySealCode } : {}),
+    ...(payload.newSecuritySealCode !== undefined
+      ? { newSecuritySealCode: payload.newSecuritySealCode }
+      : {}),
     ...(payload.costCenter
       ? { requester: { ...existing.requester, costCenter: payload.costCenter } }
       : {}),
@@ -323,19 +336,68 @@ export async function completeTicketService(
   if (existing.status !== ZEEV_STEPS.in_service) throw new Error('INVALID_STATUS')
   if (!canAccessServiceTicket(existing, user)) throw new Error('FORBIDDEN')
 
+  if (!payload.resolutionSummary?.trim()) throw new Error('RESOLUTION_REQUIRED')
+  if (!existing.serviceDueDate) throw new Error('SERVICE_DUE_DATE_REQUIRED')
+
   const now = new Date().toISOString()
   const updated = await saveTicket({
     ...existing,
-    ...(payload.resolutionSummary !== undefined ? { supportNotes: payload.resolutionSummary } : {}),
+    supportNotes: payload.resolutionSummary.trim(),
     ...(payload.deliveredEquipment !== undefined
       ? { deliveredEquipment: payload.deliveredEquipment }
       : {}),
-    status: ZEEV_STEPS.awaiting_evaluation,
+    status: ZEEV_STEPS.awaiting_completion_approval,
     sla: { ...existing.sla, resolvedAt: now },
     updatedAt: now,
   })
 
+  return updated
+}
+
+export async function approveTicketCompletion(
+  payload: ApproveCompletionPayload,
+  user: User,
+): Promise<Ticket> {
+  if (!hasPermission(user, 'triage') && !hasPermission(user, 'admin')) {
+    throw new Error('FORBIDDEN')
+  }
+  const existing = await readTicket(payload.ticketId)
+  if (existing.status !== ZEEV_STEPS.awaiting_completion_approval) {
+    throw new Error('INVALID_STATUS')
+  }
+
+  const now = new Date().toISOString()
+
+  if (!payload.approved) {
+    if (!payload.justification?.trim()) throw new Error('JUSTIFICATION_REQUIRED')
+    const updated = await saveTicket({
+      ...existing,
+      status: ZEEV_STEPS.in_service,
+      updatedAt: now,
+    })
+    await writeAuditLog({
+      entityType: 'ticket',
+      entityId: existing.id,
+      action: 'completion_rejected',
+      userId: user.id,
+      justification: payload.justification,
+    })
+    return updated
+  }
+
+  const updated = await saveTicket({
+    ...existing,
+    status: ZEEV_STEPS.awaiting_evaluation,
+    updatedAt: now,
+  })
+
   void notifyTicketEmail('avaliacao_pendente', updated, existing.requester, user.id)
+  await writeAuditLog({
+    entityType: 'ticket',
+    entityId: existing.id,
+    action: 'completion_approved',
+    userId: user.id,
+  })
   return updated
 }
 
@@ -458,7 +520,12 @@ export async function addTicketComment(
   userId: string,
 ): Promise<Ticket> {
   const existing = await readTicket(payload.ticketId)
-  assertServiceTicketStatus(existing)
+  const allowed: string[] = [
+    ZEEV_STEPS.awaiting_service,
+    ZEEV_STEPS.in_service,
+    ZEEV_STEPS.awaiting_completion_approval,
+  ]
+  if (!allowed.includes(existing.status)) throw new Error('INVALID_STATUS')
 
   const comment = {
     id: randomUUID(),
@@ -497,8 +564,13 @@ export async function listTicketsFiltered(
     return all.filter(
       (t) =>
         (t.status === ZEEV_STEPS.awaiting_service || t.status === ZEEV_STEPS.in_service) &&
-        (t.assigneeId === user.id || hasPermission(user, 'admin')),
+        (t.assigneeId === user.id ||
+          t.additionalAssigneeId === user.id ||
+          hasPermission(user, 'admin')),
     )
+  }
+  if (queue === 'completion') {
+    return all.filter((t) => t.status === ZEEV_STEPS.awaiting_completion_approval)
   }
   if (queue === 'approvals_it') {
     return all.filter((t) => t.status === ZEEV_STEPS.awaiting_it_manager_approval)

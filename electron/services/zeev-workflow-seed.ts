@@ -25,10 +25,16 @@ function buildZeevSteps(): WorkflowStep[] {
     { id: ZEEV_STEPS.cancellation_completed, name: 'Cancelamento concluído', type: 'manual', order: 15 },
     { id: ZEEV_STEPS.awaiting_service, name: 'Aguardando atendimento', type: 'manual', order: 16 },
     { id: ZEEV_STEPS.in_service, name: 'Em atendimento', type: 'manual', order: 17, slaHours: 24 },
-    { id: ZEEV_STEPS.resolved, name: 'Resolvido', type: 'manual', order: 18 },
-    { id: ZEEV_STEPS.awaiting_evaluation, name: 'Aguardando avaliação', type: 'manual', order: 19 },
-    { id: ZEEV_STEPS.completed, name: 'Concluído', type: 'manual', order: 20 },
-    { id: ZEEV_STEPS.cancelled, name: 'Cancelado', type: 'manual', order: 21 },
+    {
+      id: ZEEV_STEPS.awaiting_completion_approval,
+      name: 'Aguardando aprovação de conclusão',
+      type: 'approval',
+      order: 18,
+    },
+    { id: ZEEV_STEPS.resolved, name: 'Resolvido', type: 'manual', order: 19 },
+    { id: ZEEV_STEPS.awaiting_evaluation, name: 'Aguardando avaliação', type: 'manual', order: 20 },
+    { id: ZEEV_STEPS.completed, name: 'Concluído', type: 'manual', order: 21 },
+    { id: ZEEV_STEPS.cancelled, name: 'Cancelado', type: 'manual', order: 22 },
   ]
   return defs.map((d) => ({ ...d }))
 }
@@ -63,7 +69,10 @@ function buildZeevTransitions(): WorkflowTransition[] {
     t(ZEEV_STEPS.awaiting_cancellation_approval, ZEEV_STEPS.cancellation_rejected),
     t(ZEEV_STEPS.cancellation_approved, ZEEV_STEPS.cancellation_completed),
     t(ZEEV_STEPS.awaiting_service, ZEEV_STEPS.in_service),
+    t(ZEEV_STEPS.in_service, ZEEV_STEPS.awaiting_completion_approval),
     t(ZEEV_STEPS.in_service, ZEEV_STEPS.resolved),
+    t(ZEEV_STEPS.awaiting_completion_approval, ZEEV_STEPS.awaiting_evaluation),
+    t(ZEEV_STEPS.awaiting_completion_approval, ZEEV_STEPS.in_service),
     t(ZEEV_STEPS.resolved, ZEEV_STEPS.awaiting_evaluation),
     t(ZEEV_STEPS.awaiting_evaluation, ZEEV_STEPS.completed),
   ]

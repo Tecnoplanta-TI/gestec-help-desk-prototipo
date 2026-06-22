@@ -26,6 +26,8 @@ const DEFAULT_MESSAGES: Record<string, string> = {
   ATTACHMENT_NOT_FOUND: 'Anexo não encontrado.',
   EMAIL_ALREADY_EXISTS: 'Já existe um usuário com este e-mail.',
   SELF_DEACTIVATE_FORBIDDEN: 'Você não pode desativar a própria conta.',
+  RESOLUTION_REQUIRED: 'Descreva o que foi realizado antes de enviar para aprovação.',
+  SERVICE_DUE_DATE_REQUIRED: 'Informe o prazo do atendimento antes de concluir.',
 }
 
 interface IpcErrorOptions {

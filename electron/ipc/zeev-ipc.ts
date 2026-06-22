@@ -12,6 +12,7 @@ import { listAuditLogs } from '../services/audit'
 import {
   addTicketComment,
   approveTicket,
+  approveTicketCompletion,
   completeTicketService,
   createTicketAppointment,
   createTicketTask,
@@ -87,7 +88,16 @@ export function registerZeevHandlers(): void {
     const parsed = z
       .object({
         queue: z
-          .enum(['all', 'mine', 'triage', 'service', 'approvals_it', 'approvals_app', 'cancellation'])
+          .enum([
+            'all',
+            'mine',
+            'triage',
+            'service',
+            'completion',
+            'approvals_it',
+            'approvals_app',
+            'cancellation',
+          ])
           .optional(),
       })
       .safeParse(filter ?? {})
@@ -177,7 +187,11 @@ export function registerZeevHandlers(): void {
     try {
       return await completeTicketService(parsed.data, user)
     } catch (e) {
-      if (e instanceof Error && e.message === 'FORBIDDEN') ipcError('FORBIDDEN')
+      if (e instanceof Error) {
+        if (e.message === 'FORBIDDEN') ipcError('FORBIDDEN')
+        if (e.message === 'RESOLUTION_REQUIRED') ipcError('RESOLUTION_REQUIRED')
+        if (e.message === 'SERVICE_DUE_DATE_REQUIRED') ipcError('SERVICE_DUE_DATE_REQUIRED')
+      }
       throw e
     }
   })
@@ -218,6 +232,12 @@ export function registerZeevHandlers(): void {
             }),
           )
           .optional(),
+        createZeevUser: z.boolean().optional(),
+        createEmail: z.boolean().optional(),
+        facilitatorChecklist: z.string().max(200).optional(),
+        securitySealChanged: z.boolean().optional(),
+        securitySealCode: z.string().max(100).optional(),
+        newSecuritySealCode: z.string().max(100).optional(),
       })
       .safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -225,6 +245,27 @@ export function registerZeevHandlers(): void {
       return await updateServiceTicket(parsed.data, user)
     } catch (e) {
       if (e instanceof Error && e.message === 'FORBIDDEN') ipcError('FORBIDDEN')
+      throw e
+    }
+  })
+
+  ipcMain.handle('ticket:approve-completion', async (_event, payload: unknown) => {
+    const user = await requireUser()
+    const parsed = z
+      .object({
+        ticketId: z.string().uuid(),
+        approved: z.boolean(),
+        justification: z.string().max(2000).optional(),
+      })
+      .safeParse(payload)
+    if (!parsed.success) ipcError('INVALID_INPUT')
+    try {
+      return await approveTicketCompletion(parsed.data, user)
+    } catch (e) {
+      if (e instanceof Error) {
+        if (e.message === 'FORBIDDEN') ipcError('FORBIDDEN')
+        if (e.message === 'JUSTIFICATION_REQUIRED') ipcError('JUSTIFICATION_REQUIRED')
+      }
       throw e
     }
   })

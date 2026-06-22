@@ -220,6 +220,24 @@ export function TicketZeevActions({
     )
   }
 
+  if (ticket.status === ZEEV_STEPS.awaiting_completion_approval && hasPermission(user, 'triage')) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Aprovação de conclusão</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Revise apontamentos, cobrança e equipamentos antes de aprovar a conclusão.
+          </p>
+          <Button asChild>
+            <Link to={`/completion/${ticket.id}`}>Aprovar conclusão</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (ticket.status === ZEEV_STEPS.awaiting_evaluation) {
     const isRequester =
       ticket.requesterUserId === user.id ||

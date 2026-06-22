@@ -13,6 +13,7 @@ import {
   Sun,
   Ticket,
   Timer,
+  CheckCircle2,
   Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -65,6 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/approvals/app', label: 'Aprovações App', icon: GitBranch },
       { to: '/triage', label: 'Triagem', icon: Columns3 },
       { to: '/service', label: 'Atendimento', icon: Timer },
+      { to: '/completion', label: 'Aprovar conclusão', icon: CheckCircle2 },
       { to: '/approvals/cancellation', label: 'Cancelamentos', icon: MessageSquare },
     ],
   },

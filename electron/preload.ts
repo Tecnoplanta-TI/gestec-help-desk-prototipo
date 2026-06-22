@@ -24,6 +24,7 @@ import type {
   CreateProjectTaskAppointmentPayload,
   CreateProjectTaskPayload,
   CreateSlaRulePayload,
+  ApproveCompletionPayload,
   ApproveTicketPayload,
   AddTicketCommentPayload,
   AppConfig,
@@ -130,6 +131,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   updateServiceTicket: (payload: UpdateServiceTicketPayload): Promise<Ticket> =>
     ipcRenderer.invoke('ticket:update-service', payload),
+
+  approveTicketCompletion: (payload: ApproveCompletionPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:approve-completion', payload),
 
   submitTicketEvaluation: (payload: SubmitTicketEvaluationPayload): Promise<Ticket> =>
     ipcRenderer.invoke('ticket:submit-evaluation', payload),
