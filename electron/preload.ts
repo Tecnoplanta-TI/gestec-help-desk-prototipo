@@ -25,8 +25,10 @@ import type {
   CreateProjectTaskPayload,
   CreateSlaRulePayload,
   ApproveTicketPayload,
+  AddTicketCommentPayload,
   AppConfig,
   AuditLog,
+  CompleteTicketServicePayload,
   CreateCostCenterPayload,
   CreateTicketAppointmentPayload,
   CreateTicketPayload,
@@ -39,6 +41,7 @@ import type {
   DeleteExpenseAttachmentPayload,
   DeleteProjectTaskAppointmentPayload,
   DeleteProjectTaskPayload,
+  DeleteTicketAppointmentPayload,
   ExpenseEntityType,
   GetAttachmentDownloadUrlPayload,
   ListTicketsFilterPayload,
@@ -61,6 +64,7 @@ import type {
   UpdateDiscordRulePayload,
   UpdateSlaRulePayload,
   UpdateTicketPayload,
+  UpdateServiceTicketPayload,
   UpdateTicketTaskPayload,
   UpdateWorkflowPayload,
   UpdateUserPayload,
@@ -121,8 +125,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startTicketService: (ticketId: string): Promise<Ticket> =>
     ipcRenderer.invoke('ticket:start-service', ticketId),
 
-  completeTicketService: (ticketId: string): Promise<Ticket> =>
-    ipcRenderer.invoke('ticket:complete-service', ticketId),
+  completeTicketService: (payload: CompleteTicketServicePayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:complete-service', payload),
+
+  updateServiceTicket: (payload: UpdateServiceTicketPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:update-service', payload),
 
   submitTicketEvaluation: (payload: SubmitTicketEvaluationPayload): Promise<Ticket> =>
     ipcRenderer.invoke('ticket:submit-evaluation', payload),
@@ -135,6 +142,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   createTicketAppointment: (payload: CreateTicketAppointmentPayload): Promise<Ticket> =>
     ipcRenderer.invoke('ticket:create-appointment', payload),
+
+  deleteTicketAppointment: (payload: DeleteTicketAppointmentPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:delete-appointment', payload),
+
+  addTicketComment: (payload: AddTicketCommentPayload): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:add-comment', payload),
 
   listAuditLogs: (entityId: string): Promise<AuditLog[]> =>
     ipcRenderer.invoke('audit:list', entityId),

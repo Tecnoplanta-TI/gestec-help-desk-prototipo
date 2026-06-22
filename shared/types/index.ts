@@ -168,6 +168,12 @@ export interface TicketComment {
   createdAt: string
 }
 
+export interface DeliveredEquipmentItem {
+  id: string
+  assetId: string
+  description: string
+}
+
 export interface AuditLog {
   id: string
   entityType: 'ticket' | 'user'
@@ -279,6 +285,36 @@ export interface CreateTicketAppointmentPayload {
   startTime: string
   endTime: string
   note?: string
+  technicianId?: string
+}
+
+export interface DeleteTicketAppointmentPayload {
+  ticketId: string
+  appointmentId: string
+}
+
+export interface UpdateServiceTicketPayload {
+  ticketId: string
+  costCenter?: string
+  priority?: TicketPriority
+  level?: TicketLevel
+  serviceGroup?: ServiceGroup
+  serviceDueDate?: string
+  additionalAssigneeId?: string | null
+  supportNotes?: string
+  deliveredEquipment?: DeliveredEquipmentItem[]
+}
+
+export interface CompleteTicketServicePayload {
+  ticketId: string
+  resolutionSummary?: string
+  deliveredEquipment?: DeliveredEquipmentItem[]
+}
+
+export interface AddTicketCommentPayload {
+  ticketId: string
+  body: string
+  isInternal?: boolean
 }
 
 export interface SubmitTicketEvaluationPayload {
@@ -537,6 +573,9 @@ export interface Ticket {
   status: string // step ID do workflow
   workflowId: string
   assigneeId?: string
+  additionalAssigneeId?: string
+  serviceDueDate?: string
+  deliveredEquipment?: DeliveredEquipmentItem[]
   // Campos internos TI
   level?: TicketLevel
   assetCode?: string
@@ -785,11 +824,14 @@ export interface ElectronAPI {
   approveTicket: (payload: ApproveTicketPayload) => Promise<Ticket>
   triageTicket: (payload: TriageTicketPayload) => Promise<Ticket>
   startTicketService: (ticketId: string) => Promise<Ticket>
-  completeTicketService: (ticketId: string) => Promise<Ticket>
+  completeTicketService: (payload: CompleteTicketServicePayload) => Promise<Ticket>
+  updateServiceTicket: (payload: UpdateServiceTicketPayload) => Promise<Ticket>
   submitTicketEvaluation: (payload: SubmitTicketEvaluationPayload) => Promise<Ticket>
   createTicketTask: (payload: CreateTicketTaskPayload) => Promise<Ticket>
   updateTicketTask: (payload: UpdateTicketTaskPayload) => Promise<Ticket>
   createTicketAppointment: (payload: CreateTicketAppointmentPayload) => Promise<Ticket>
+  deleteTicketAppointment: (payload: DeleteTicketAppointmentPayload) => Promise<Ticket>
+  addTicketComment: (payload: AddTicketCommentPayload) => Promise<Ticket>
   listAuditLogs: (entityId: string) => Promise<AuditLog[]>
   listCostCenters: () => Promise<CostCenter[]>
   createCostCenter: (payload: CreateCostCenterPayload) => Promise<CostCenter>

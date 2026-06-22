@@ -3,24 +3,29 @@ import { addDays } from 'date-fns'
 import { hasPermission } from '../../shared/lib/permissions'
 import { ZEEV_STEPS } from '../../shared/lib/zeev-steps'
 import type {
+  AddTicketCommentPayload,
   ApproveTicketPayload,
+  CompleteTicketServicePayload,
   CreateTicketAppointmentPayload,
   CreateTicketTaskPayload,
+  DeleteTicketAppointmentPayload,
   ListTicketsFilterPayload,
   SubmitTicketEvaluationPayload,
   Ticket,
   TicketCancellationItem,
   TicketReportStats,
   TriageTicketPayload,
+  UpdateServiceTicketPayload,
   UpdateTicketPayload,
   UpdateTicketTaskPayload,
   User,
 } from '../../shared/types'
+import { calcMinutesBetween } from '../../shared/lib/time'
 import { getAppConfig } from './app-config'
 import { writeAuditLog } from './audit'
 import { notifyTicketEmail } from './email'
 import { getContainer } from './cosmos'
-import { calcMinutesBetween, normalizeTicket } from './ticket-helpers'
+import { normalizeTicket } from './ticket-helpers'
 import { getTicketById, listTickets as listAllTickets } from './ticket'
 
 const TICKETS_CONTAINER = 'tickets'
@@ -35,6 +40,24 @@ async function saveTicket(ticket: Ticket): Promise<Ticket> {
   const container = await getContainer(TICKETS_CONTAINER)
   const { resource } = await container.item(ticket.id, ticket.id).replace(ticket)
   return normalizeTicket(resource as Ticket)
+}
+
+function canAccessServiceTicket(ticket: Ticket, user: User): boolean {
+  if (hasPermission(user, 'admin')) return true
+  if (!hasPermission(user, 'agent')) return false
+  return (
+    ticket.assigneeId === user.id ||
+    ticket.additionalAssigneeId === user.id
+  )
+}
+
+function assertServiceTicketStatus(ticket: Ticket): void {
+  if (
+    ticket.status !== ZEEV_STEPS.awaiting_service &&
+    ticket.status !== ZEEV_STEPS.in_service
+  ) {
+    throw new Error('INVALID_STATUS')
+  }
 }
 
 export async function updateTicket(
@@ -245,28 +268,68 @@ export async function triageTicket(payload: TriageTicketPayload, user: User): Pr
 export async function startTicketService(ticketId: string, user: User): Promise<Ticket> {
   const existing = await readTicket(ticketId)
   if (existing.status !== ZEEV_STEPS.awaiting_service) throw new Error('INVALID_STATUS')
-  if (existing.assigneeId && existing.assigneeId !== user.id && !hasPermission(user, 'admin')) {
-    throw new Error('FORBIDDEN')
-  }
+  if (!canAccessServiceTicket(existing, user)) throw new Error('FORBIDDEN')
 
+  const now = new Date().toISOString()
   const updated = await saveTicket({
     ...existing,
     status: ZEEV_STEPS.in_service,
     assigneeId: existing.assigneeId ?? user.id,
-    updatedAt: new Date().toISOString(),
+    sla: {
+      ...existing.sla,
+      firstContactAt: existing.sla.firstContactAt ?? now,
+    },
+    updatedAt: now,
   })
 
   void notifyTicketEmail('atendimento_iniciado', updated, existing.requester, user.id)
   return updated
 }
 
-export async function completeTicketService(ticketId: string, user: User): Promise<Ticket> {
-  const existing = await readTicket(ticketId)
+export async function updateServiceTicket(
+  payload: UpdateServiceTicketPayload,
+  user: User,
+): Promise<Ticket> {
+  const existing = await readTicket(payload.ticketId)
+  assertServiceTicketStatus(existing)
+  if (!canAccessServiceTicket(existing, user)) throw new Error('FORBIDDEN')
+
+  const now = new Date().toISOString()
+  return saveTicket({
+    ...existing,
+    ...(payload.priority !== undefined ? { priority: payload.priority } : {}),
+    ...(payload.level !== undefined ? { level: payload.level } : {}),
+    ...(payload.serviceGroup !== undefined ? { serviceGroup: payload.serviceGroup } : {}),
+    ...(payload.serviceDueDate !== undefined ? { serviceDueDate: payload.serviceDueDate } : {}),
+    ...(payload.additionalAssigneeId !== undefined
+      ? { additionalAssigneeId: payload.additionalAssigneeId ?? undefined }
+      : {}),
+    ...(payload.supportNotes !== undefined ? { supportNotes: payload.supportNotes } : {}),
+    ...(payload.deliveredEquipment !== undefined
+      ? { deliveredEquipment: payload.deliveredEquipment }
+      : {}),
+    ...(payload.costCenter
+      ? { requester: { ...existing.requester, costCenter: payload.costCenter } }
+      : {}),
+    updatedAt: now,
+  })
+}
+
+export async function completeTicketService(
+  payload: CompleteTicketServicePayload,
+  user: User,
+): Promise<Ticket> {
+  const existing = await readTicket(payload.ticketId)
   if (existing.status !== ZEEV_STEPS.in_service) throw new Error('INVALID_STATUS')
+  if (!canAccessServiceTicket(existing, user)) throw new Error('FORBIDDEN')
 
   const now = new Date().toISOString()
   const updated = await saveTicket({
     ...existing,
+    ...(payload.resolutionSummary !== undefined ? { supportNotes: payload.resolutionSummary } : {}),
+    ...(payload.deliveredEquipment !== undefined
+      ? { deliveredEquipment: payload.deliveredEquipment }
+      : {}),
     status: ZEEV_STEPS.awaiting_evaluation,
     sla: { ...existing.sla, resolvedAt: now },
     updatedAt: now,
@@ -352,6 +415,7 @@ export async function createTicketAppointment(
   userId: string,
 ): Promise<Ticket> {
   const existing = await readTicket(payload.ticketId)
+  assertServiceTicketStatus(existing)
   const totalMinutes = calcMinutesBetween(payload.startTime, payload.endTime)
   if (totalMinutes <= 0) throw new Error('INVALID_TIME_RANGE')
 
@@ -361,7 +425,7 @@ export async function createTicketAppointment(
     startTime: payload.startTime,
     endTime: payload.endTime,
     totalMinutes,
-    technicianId: userId,
+    technicianId: payload.technicianId ?? userId,
     origin: 'manual' as const,
     note: payload.note,
   }
@@ -369,6 +433,45 @@ export async function createTicketAppointment(
   return saveTicket({
     ...existing,
     appointments: [...existing.appointments, appointment],
+    updatedAt: new Date().toISOString(),
+  })
+}
+
+export async function deleteTicketAppointment(
+  payload: DeleteTicketAppointmentPayload,
+  userId: string,
+): Promise<Ticket> {
+  const existing = await readTicket(payload.ticketId)
+  assertServiceTicketStatus(existing)
+  const appointments = existing.appointments.filter((a) => a.id !== payload.appointmentId)
+  if (appointments.length === existing.appointments.length) throw new Error('APPOINTMENT_NOT_FOUND')
+
+  return saveTicket({
+    ...existing,
+    appointments,
+    updatedAt: new Date().toISOString(),
+  })
+}
+
+export async function addTicketComment(
+  payload: AddTicketCommentPayload,
+  userId: string,
+): Promise<Ticket> {
+  const existing = await readTicket(payload.ticketId)
+  assertServiceTicketStatus(existing)
+
+  const comment = {
+    id: randomUUID(),
+    authorId: userId,
+    body: payload.body.trim(),
+    isInternal: payload.isInternal ?? false,
+    createdAt: new Date().toISOString(),
+  }
+  if (!comment.body) throw new Error('COMMENT_REQUIRED')
+
+  return saveTicket({
+    ...existing,
+    comments: [...(existing.comments ?? []), comment],
     updatedAt: new Date().toISOString(),
   })
 }

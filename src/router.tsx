@@ -35,6 +35,7 @@ const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'
 const TriagePage = lazy(() => import('./pages/triage/TriagePage'))
 const TriageDetailPage = lazy(() => import('./pages/triage/TriageDetailPage'))
 const ServicePage = lazy(() => import('./pages/service/ServicePage'))
+const ServiceDetailPage = lazy(() => import('./pages/service/ServiceDetailPage'))
 const ApprovalsItPage = lazy(() => import('./pages/approvals/ApprovalsItPage'))
 const ApprovalsAppPage = lazy(() => import('./pages/approvals/ApprovalsAppPage'))
 const CancellationApprovalsPage = lazy(() => import('./pages/approvals/CancellationApprovalsPage'))
@@ -77,6 +78,7 @@ export const router = createHashRouter([
       { path: 'triage', element: withSuspense(TriagePage) },
       { path: 'triage/:id', element: withSuspense(TriageDetailPage) },
       { path: 'service', element: withSuspense(ServicePage) },
+      { path: 'service/:id', element: withSuspense(ServiceDetailPage) },
       { path: 'approvals/it', element: withSuspense(ApprovalsItPage) },
       { path: 'approvals/app', element: withSuspense(ApprovalsAppPage) },
       { path: 'approvals/cancellation', element: withSuspense(CancellationApprovalsPage) },

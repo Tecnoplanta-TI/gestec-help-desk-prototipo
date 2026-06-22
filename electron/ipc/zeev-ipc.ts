@@ -10,15 +10,18 @@ import {
 } from '../services/app-config'
 import { listAuditLogs } from '../services/audit'
 import {
+  addTicketComment,
   approveTicket,
   completeTicketService,
   createTicketAppointment,
   createTicketTask,
+  deleteTicketAppointment,
   getTicketReportStats,
   listTicketsFiltered,
   startTicketService,
   submitTicketEvaluation,
   triageTicket,
+  updateServiceTicket,
   updateTicket,
   updateTicketTask,
 } from '../services/ticket-zeev'
@@ -153,10 +156,77 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:complete-service', async (_event, ticketId: unknown) => {
+  ipcMain.handle('ticket:complete-service', async (_event, payload: unknown) => {
     const user = await requireUser()
-    if (!z.string().uuid().safeParse(ticketId).success) ipcError('INVALID_INPUT')
-    return completeTicketService(ticketId as string, user)
+    const parsed = z
+      .object({
+        ticketId: z.string().uuid(),
+        resolutionSummary: z.string().max(5000).optional(),
+        deliveredEquipment: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              assetId: z.string().max(100),
+              description: z.string().max(500),
+            }),
+          )
+          .optional(),
+      })
+      .safeParse(payload)
+    if (!parsed.success) ipcError('INVALID_INPUT')
+    try {
+      return await completeTicketService(parsed.data, user)
+    } catch (e) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') ipcError('FORBIDDEN')
+      throw e
+    }
+  })
+
+  ipcMain.handle('ticket:update-service', async (_event, payload: unknown) => {
+    const user = await requireUser()
+    const parsed = z
+      .object({
+        ticketId: z.string().uuid(),
+        costCenter: z.string().min(1).max(50).optional(),
+        priority: z.enum(['P1', 'P2', 'P3', 'P4']).optional(),
+        level: z.enum(['N1', 'N2', 'N3']).optional(),
+        serviceGroup: z
+          .enum([
+            'access_accounts',
+            'acquisitions',
+            'dashboards',
+            'emails',
+            'gestec',
+            'printers',
+            'maintenance_upgrade',
+            'software',
+            'network_internet',
+            'erp',
+            'process_platform',
+            'other',
+          ])
+          .optional(),
+        serviceDueDate: z.string().optional(),
+        additionalAssigneeId: z.string().uuid().nullable().optional(),
+        supportNotes: z.string().max(5000).optional(),
+        deliveredEquipment: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              assetId: z.string().max(100),
+              description: z.string().max(500),
+            }),
+          )
+          .optional(),
+      })
+      .safeParse(payload)
+    if (!parsed.success) ipcError('INVALID_INPUT')
+    try {
+      return await updateServiceTicket(parsed.data, user)
+    } catch (e) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') ipcError('FORBIDDEN')
+      throw e
+    }
   })
 
   ipcMain.handle('ticket:submit-evaluation', async (_event, payload: unknown) => {
@@ -210,6 +280,7 @@ export function registerZeevHandlers(): void {
         startTime: z.string().regex(/^\d{2}:\d{2}$/),
         endTime: z.string().regex(/^\d{2}:\d{2}$/),
         note: z.string().max(2000).optional(),
+        technicianId: z.string().uuid().optional(),
       })
       .safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -217,6 +288,36 @@ export function registerZeevHandlers(): void {
       return await createTicketAppointment(parsed.data, user.id)
     } catch (e) {
       if (e instanceof Error && e.message === 'INVALID_TIME_RANGE') ipcError('INVALID_TIME_RANGE')
+      throw e
+    }
+  })
+
+  ipcMain.handle('ticket:delete-appointment', async (_event, payload: unknown) => {
+    const user = await requireUser()
+    const parsed = z
+      .object({
+        ticketId: z.string().uuid(),
+        appointmentId: z.string().uuid(),
+      })
+      .safeParse(payload)
+    if (!parsed.success) ipcError('INVALID_INPUT')
+    return deleteTicketAppointment(parsed.data, user.id)
+  })
+
+  ipcMain.handle('ticket:add-comment', async (_event, payload: unknown) => {
+    const user = await requireUser()
+    const parsed = z
+      .object({
+        ticketId: z.string().uuid(),
+        body: z.string().min(1).max(2000),
+        isInternal: z.boolean().optional(),
+      })
+      .safeParse(payload)
+    if (!parsed.success) ipcError('INVALID_INPUT')
+    try {
+      return await addTicketComment(parsed.data, user.id)
+    } catch (e) {
+      if (e instanceof Error && e.message === 'COMMENT_REQUIRED') ipcError('COMMENT_REQUIRED')
       throw e
     }
   })

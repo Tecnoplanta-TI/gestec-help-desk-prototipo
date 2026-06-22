@@ -14,13 +14,6 @@ export function normalizeTicket(ticket: Ticket): Ticket {
     })),
     attachments: ticket.attachments ?? [],
     appointments: ticket.appointments ?? [],
+    deliveredEquipment: ticket.deliveredEquipment ?? [],
   }
-}
-
-export function calcMinutesBetween(startTime: string, endTime: string): number {
-  const [sh, sm] = startTime.split(':').map(Number)
-  const [eh, em] = endTime.split(':').map(Number)
-  const start = sh * 60 + sm
-  const end = eh * 60 + em
-  return end - start
 }

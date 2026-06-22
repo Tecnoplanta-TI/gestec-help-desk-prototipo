@@ -186,17 +186,37 @@ export function TicketZeevActions({
 
   if (ticket.status === ZEEV_STEPS.awaiting_service && ticket.assigneeId === user.id) {
     return (
-      <Button disabled={busy} onClick={() => run(() => ipc.startTicketService(ticket.id))}>
-        Iniciar atendimento
-      </Button>
+      <Card>
+        <CardHeader>
+          <CardTitle>Atendimento</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Use a tela de contato inicial para revisar o ticket e iniciar o atendimento.
+          </p>
+          <Button asChild>
+            <Link to={`/service/${ticket.id}`}>Abrir contato inicial</Link>
+          </Button>
+        </CardContent>
+      </Card>
     )
   }
 
   if (ticket.status === ZEEV_STEPS.in_service && (ticket.assigneeId === user.id || hasPermission(user, 'admin'))) {
     return (
-      <Button disabled={busy} onClick={() => run(() => ipc.completeTicketService(ticket.id))}>
-        Concluir atendimento
-      </Button>
+      <Card>
+        <CardHeader>
+          <CardTitle>Atendimento em andamento</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Registre apontamentos, equipamentos entregues e conclua o atendimento na tela dedicada.
+          </p>
+          <Button asChild>
+            <Link to={`/service/${ticket.id}`}>Continuar atendimento</Link>
+          </Button>
+        </CardContent>
+      </Card>
     )
   }
 
