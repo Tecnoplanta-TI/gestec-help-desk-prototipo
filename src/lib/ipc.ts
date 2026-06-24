@@ -1,34 +1,28 @@
 /**
  * src/lib/ipc.ts
  *
- * Ponto único de acesso à API do backend:
- * - Electron: window.electronAPI (preload)
- * - Navegador: HTTP POST /api/rpc (ver http-api.ts)
+ * Wrapper tipado para `window.electronAPI`.
+ * Use sempre esta exportação nos componentes e hooks do Renderer —
+ * nunca acesse `window.electronAPI` diretamente.
+ *
+ * Motivo: centraliza o ponto de acesso, facilita mocking em testes
+ * e fornece mensagem de erro clara caso o preload não tenha sido carregado.
  */
 
 import type { ElectronAPI } from '../../shared/types'
-import { httpApi } from './http-api'
 
-function isElectronRenderer(): boolean {
-  return typeof window !== 'undefined' && Boolean(window.electronAPI)
-}
-
-function getApi(): ElectronAPI {
-  if (isElectronRenderer()) {
-    return window.electronAPI!
+function getElectronAPI(): ElectronAPI {
+  if (typeof window === 'undefined' || !window.electronAPI) {
+    throw new Error(
+      '[ipc] window.electronAPI não está disponível. ' +
+        'Verifique se o preload script foi carregado corretamente.',
+    )
   }
-  return httpApi
+  return window.electronAPI
 }
 
 export const ipc: ElectronAPI = new Proxy({} as ElectronAPI, {
   get(_target, prop: string) {
-    const api = getApi()
-    const value = api[prop as keyof ElectronAPI]
-    if (typeof value === 'function') {
-      return value.bind(api)
-    }
-    return value
+    return getElectronAPI()[prop as keyof ElectronAPI]
   },
 })
-
-export const isBrowserMode = !isElectronRenderer()

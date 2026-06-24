@@ -6,8 +6,6 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "dev:web": "vite --config vite.web.config.ts",
-    "dev:api": "node scripts/dev-api.mjs",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "package": "electron-builder",

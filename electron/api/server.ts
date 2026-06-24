@@ -11,7 +11,6 @@
 
 import Fastify from 'fastify'
 import { registerWebhookRoutes } from './routes/webhooks'
-import { registerRpcRoutes } from './routes/rpc'
 
 const server = Fastify({
   logger: process.env.NODE_ENV === 'development',
@@ -24,34 +23,12 @@ server.get('/health', async () => {
 })
 
 registerWebhookRoutes(server)
-registerRpcRoutes(server)
-
-const DEV_ORIGINS = new Set([
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:5174',
-  'http://127.0.0.1:5174',
-])
-
-server.addHook('onRequest', async (request, reply) => {
-  const origin = request.headers.origin
-  if (origin && DEV_ORIGINS.has(origin)) {
-    reply.header('Access-Control-Allow-Origin', origin)
-    reply.header('Access-Control-Allow-Credentials', 'true')
-    reply.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-    reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  }
-
-  if (request.method === 'OPTIONS') {
-    return reply.status(204).send()
-  }
-})
 
 // ─── Inicialização ────────────────────────────────────────────────────────────
 
 export async function startApiServer(): Promise<void> {
   const port = Number(process.env.PORT ?? 3847)
-  const host = process.env.API_HOST ?? '127.0.0.1'
+  const host = '127.0.0.1' // somente localhost — sem exposição externa
 
   try {
     await server.listen({ port, host })

@@ -21,7 +21,6 @@ import {
   saveSession,
   clearSession,
   getStoredSession,
-  getTokenExpiresAt,
 } from '../services/auth'
 import {
   findUserByEmail,
@@ -37,7 +36,6 @@ import {
   isOfflineAdminCredential,
   resolveAuthenticatedUser,
 } from '../services/session-user'
-import { getRequestAuthToken } from '../services/request-auth'
 import type { LoginResult } from '../../shared/types'
 
 // ─── Schemas Zod ─────────────────────────────────────────────────────────────
@@ -154,7 +152,7 @@ export function registerAuthHandlers(): void {
         const { token, expiresAt } = await signToken(offlineAdmin)
         saveSession(token, offlineAdmin.id, expiresAt)
         clearLoginAttempts(normalizedEmail)
-        return { user: offlineAdmin, expiresAt, accessToken: token } satisfies LoginResult
+        return { user: offlineAdmin, expiresAt } satisfies LoginResult
       }
       throw error
     }
@@ -165,7 +163,7 @@ export function registerAuthHandlers(): void {
         const { token, expiresAt } = await signToken(offlineAdmin)
         saveSession(token, offlineAdmin.id, expiresAt)
         clearLoginAttempts(normalizedEmail)
-        return { user: offlineAdmin, expiresAt, accessToken: token } satisfies LoginResult
+        return { user: offlineAdmin, expiresAt } satisfies LoginResult
       }
       registerLoginFailure(normalizedEmail)
       ipcError('INVALID_CREDENTIALS')
@@ -189,7 +187,7 @@ export function registerAuthHandlers(): void {
     // Nunca retornar passwordHash
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _h, ...user } = userDoc
-    return { user, expiresAt, accessToken: token } satisfies LoginResult
+    return { user, expiresAt } satisfies LoginResult
   })
 
   // ── auth:logout ─────────────────────────────────────────────────────────────
@@ -199,15 +197,6 @@ export function registerAuthHandlers(): void {
 
   // ── auth:get-session ────────────────────────────────────────────────────────
   ipcMain.handle('auth:get-session', async (): Promise<LoginResult | null> => {
-    const requestToken = getRequestAuthToken()
-    if (requestToken) {
-      const user = await resolveAuthenticatedUser()
-      if (!user) return null
-      const expiresAt = await getTokenExpiresAt(requestToken)
-      if (!expiresAt) return null
-      return { user, expiresAt, accessToken: requestToken }
-    }
-
     if (is.dev) {
       await ensureOfflineAdminSession()
     }
@@ -218,7 +207,7 @@ export function registerAuthHandlers(): void {
     const user = await resolveAuthenticatedUser()
     if (!user) return null
 
-    return { user, expiresAt: session.expiresAt, accessToken: session.token }
+    return { user, expiresAt: session.expiresAt }
   })
 
   // ── auth:list-users ─────────────────────────────────────────────────────────

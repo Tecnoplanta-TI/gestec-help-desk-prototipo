@@ -85,20 +85,6 @@ export async function verifyToken(token: string): Promise<{ userId: string } | n
   }
 }
 
-/** Retorna expiração ISO do token, ou null se inválido */
-export async function getTokenExpiresAt(token: string): Promise<string | null> {
-  try {
-    const secret = getJwtSecret()
-    const { payload } = await jwtVerify(token, secret)
-    if (typeof payload.exp === 'number') {
-      return new Date(payload.exp * 1000).toISOString()
-    }
-  } catch {
-    return null
-  }
-  return null
-}
-
 // ─── Sessão persistida ────────────────────────────────────────────────────────
 
 /** Persiste a sessão ativa no electron-store */

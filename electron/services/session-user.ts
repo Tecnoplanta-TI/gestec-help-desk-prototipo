@@ -14,7 +14,6 @@ import {
   verifyToken,
 } from './auth'
 import { findUserById } from './user'
-import { getRequestAuthToken } from './request-auth'
 
 export const OFFLINE_ADMIN_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -38,16 +37,6 @@ export function isOfflineAdminCredential(identifier: string, password: string): 
 
 /** Retorna o usuário da sessão ativa, ou null se não autenticado */
 export async function resolveAuthenticatedUser(): Promise<User | null> {
-  const requestToken = getRequestAuthToken()
-  if (requestToken) {
-    const verified = await verifyToken(requestToken)
-    if (!verified) return null
-    if (verified.userId === OFFLINE_ADMIN_ID) return buildOfflineAdminUser()
-    const user = await findUserById(verified.userId)
-    if (!user || !user.active) return null
-    return user
-  }
-
   const session = getStoredSession()
   if (!session) return null
 

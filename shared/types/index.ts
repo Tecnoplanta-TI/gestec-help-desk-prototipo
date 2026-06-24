@@ -109,8 +109,6 @@ export interface User {
 export interface LoginResult {
   user: User
   expiresAt: string // ISO datetime
-  /** Token JWT para clientes web (navegador) */
-  accessToken?: string
 }
 
 export interface CreateUserPayload {
