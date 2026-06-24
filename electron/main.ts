@@ -135,7 +135,7 @@ app.whenReady().then(async () => {
   })
 
   if (isWebOnly) {
-    console.log('[WEB] Modo API-only — acesse o frontend via Vite (npm run dev:vite)')
+    console.log('[WEB] Modo API-only — abra http://localhost:5173 no navegador (ou npm run dev:web)')
     return
   }
 

@@ -26,7 +26,12 @@ server.get('/health', async () => {
 registerWebhookRoutes(server)
 registerRpcRoutes(server)
 
-const DEV_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1:5173'])
+const DEV_ORIGINS = new Set([
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+])
 
 server.addHook('onRequest', async (request, reply) => {
   const origin = request.headers.origin
