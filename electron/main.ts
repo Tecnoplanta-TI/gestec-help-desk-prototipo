@@ -16,6 +16,7 @@
 import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { installIpcRpcCapture } from './ipc/capture-ipc'
 import { registerAuthHandlers } from './ipc/auth-ipc'
 import { registerTicketHandlers } from './ipc/ticket-ipc'
 import { registerSlaHandlers } from './ipc/sla-ipc'
@@ -30,6 +31,10 @@ import { ensureOfflineAdminSession } from './services/session-user'
 
 let mainWindow: BrowserWindow | null = null
 let floatingWindow: BrowserWindow | null = null
+
+const isWebOnly = process.env.GESTEC_WEB_ONLY === '1'
+
+installIpcRpcCapture()
 
 // ─── Criação da janela principal ──────────────────────────────────────────────
 
@@ -99,13 +104,13 @@ function createFloatingWindow(): void {
 // ─── Ciclo de vida ────────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
-  // Configurações recomendadas para apps Electron em produção
-  electronApp.setAppUserModelId('com.tecnoplanta.gestec-help-desk')
+  if (!isWebOnly) {
+    electronApp.setAppUserModelId('com.tecnoplanta.gestec-help-desk')
 
-  // Atalho de DevTools apenas em desenvolvimento
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
+    app.on('browser-window-created', (_, window) => {
+      optimizer.watchWindowShortcuts(window)
+    })
+  }
 
   if (is.dev) {
     await ensureOfflineAdminSession()
@@ -129,6 +134,11 @@ app.whenReady().then(async () => {
     console.error('[API] erro ao iniciar servidor interno:', error)
   })
 
+  if (isWebOnly) {
+    console.log('[WEB] Modo API-only — acesse o frontend via Vite (npm run dev:vite)')
+    return
+  }
+
   createMainWindow()
 
   app.on('activate', () => {
@@ -140,6 +150,7 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
+  if (isWebOnly) return
   // Windows/Linux: encerrar app quando todas as janelas forem fechadas
   if (process.platform !== 'darwin') {
     app.quit()
