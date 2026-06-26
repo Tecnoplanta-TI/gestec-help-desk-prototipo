@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Clock, MessageSquare, Package, Plus, SkipForward, Trash2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock, MessageSquare, Package, Pause, Play, Plus, SkipForward, Square, Timer, Trash2 } from 'lucide-react'
 import type {
   Appointment,
   CostCenter,
@@ -26,13 +26,16 @@ import {
 import { computeTicketBilling, formatCurrency } from '@/lib/ticket-billing'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
+import { formatSeconds, getTimerTotalSeconds } from '@/lib/timer'
 import { useAuthStore } from '@/stores/authStore'
+import { useTimerStore } from '@/stores/timerStore'
 import { useToast } from '@/hooks/use-toast'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusAlert } from '@/components/shared/StatusAlert'
 import { InfoRow } from '@/components/shared/InfoRow'
 import { InlineLoader } from '@/components/shared/PageLoader'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -78,6 +81,8 @@ export default function ServiceDetailPage(): JSX.Element {
   const navigate = useNavigate()
   const { toast } = useToast()
   const currentUser = useAuthStore((state) => state.user)
+  const timers = useTimerStore((state) => state.timers)
+  const setTimers = useTimerStore((state) => state.setTimers)
 
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [users, setUsers] = useState<User[]>([])
@@ -85,6 +90,7 @@ export default function ServiceDetailPage(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [isTimerLoading, setIsTimerLoading] = useState(false)
 
   const [costCenter, setCostCenter] = useState('')
   const [priority, setPriority] = useState<TicketPriority>('P3')
@@ -134,6 +140,13 @@ export default function ServiceDetailPage(): JSX.Element {
   }, [serviceDueDate])
 
   const canComplete = completionBlockers.length === 0
+
+  const currentTicketTimer = useMemo(() => {
+    if (!ticket) return null
+    return (
+      timers.find((timer) => timer.entityType === 'ticket' && timer.entityId === ticket.id) ?? null
+    )
+  }, [timers, ticket])
 
   const load = useCallback(async () => {
     if (!id) return
@@ -287,6 +300,67 @@ export default function ServiceDetailPage(): JSX.Element {
       })
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function refreshTimers(): Promise<void> {
+    const active = await ipc.getActiveTimers()
+    setTimers(active)
+  }
+
+  async function handleStartOrResumeTimer(): Promise<void> {
+    if (!ticket) return
+    setIsTimerLoading(true)
+    try {
+      await ipc.startTimer(ticket.id, 'ticket', ticket.title)
+      await refreshTimers()
+      toast({ title: 'Cronômetro iniciado' })
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível iniciar o cronômetro',
+        description: getIpcErrorMessage(e),
+      })
+    } finally {
+      setIsTimerLoading(false)
+    }
+  }
+
+  async function handlePauseTimer(): Promise<void> {
+    if (!currentTicketTimer) return
+    setIsTimerLoading(true)
+    try {
+      await ipc.pauseTimer(currentTicketTimer.id)
+      await refreshTimers()
+      toast({ title: 'Cronômetro pausado' })
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível pausar',
+        description: getIpcErrorMessage(e),
+      })
+    } finally {
+      setIsTimerLoading(false)
+    }
+  }
+
+  async function handleStopTimer(): Promise<void> {
+    if (!ticket || !currentTicketTimer) return
+    setIsTimerLoading(true)
+    try {
+      await ipc.stopTimer(currentTicketTimer.id)
+      await refreshTimers()
+      const updatedTicket = await ipc.getTicketById(ticket.id)
+      setTicket(updatedTicket)
+      toast({ title: 'Cronômetro parado e apontamento registrado' })
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível parar',
+        description: getIpcErrorMessage(e),
+      })
+    } finally {
+      setIsTimerLoading(false)
     }
   }
 
@@ -1031,6 +1105,78 @@ export default function ServiceDetailPage(): JSX.Element {
         </div>
 
         <div className="lg:sticky lg:top-6 lg:self-start space-y-4">
+          {isInService && (
+            <Card className="surface-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Timer className="h-4 w-4 text-muted-foreground" />
+                  Cronômetro
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!currentTicketTimer ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">Nenhum cronômetro ativo.</p>
+                    <Button
+                      className="w-full gap-2"
+                      disabled={isTimerLoading || busy}
+                      onClick={() => void handleStartOrResumeTimer()}
+                    >
+                      <Play className="h-4 w-4" />
+                      {isTimerLoading ? 'Processando...' : 'Iniciar cronômetro'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border bg-muted/30 p-4 text-center">
+                      <p className="font-mono text-3xl font-semibold tracking-tight">
+                        {formatSeconds(getTimerTotalSeconds(currentTicketTimer))}
+                      </p>
+                      <Badge
+                        variant={currentTicketTimer.state === 'running' ? 'default' : 'secondary'}
+                        className="mt-2"
+                      >
+                        {currentTicketTimer.state === 'running' ? 'Em andamento' : 'Pausado'}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {currentTicketTimer.state === 'running' ? (
+                        <Button
+                          variant="outline"
+                          disabled={isTimerLoading || busy}
+                          onClick={() => void handlePauseTimer()}
+                          className="gap-2"
+                        >
+                          <Pause className="h-4 w-4" />
+                          Pausar
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          disabled={isTimerLoading || busy}
+                          onClick={() => void handleStartOrResumeTimer()}
+                          className="gap-2"
+                        >
+                          <Play className="h-4 w-4" />
+                          Retomar
+                        </Button>
+                      )}
+                      <Button
+                        variant="destructive"
+                        disabled={isTimerLoading || busy}
+                        onClick={() => void handleStopTimer()}
+                        className="gap-2"
+                      >
+                        <Square className="h-4 w-4" />
+                        Parar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {billing && isInService && (
             <Card className="surface-card">
               <CardHeader className="pb-2">
@@ -1081,26 +1227,14 @@ export default function ServiceDetailPage(): JSX.Element {
                 </>
               )}
               {isInService && (
-                <>
-                  {completionBlockers.length > 0 ? (
-                    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
-                      <p className="font-medium">Para enviar à aprovação, preencha:</p>
-                      <ul className="mt-1 list-inside list-disc space-y-0.5 text-muted-foreground">
-                        {completionBlockers.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  <Button
-                    className="w-full"
-                    disabled={busy || !canComplete}
-                    onClick={() => void handleComplete()}
-                  >
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Enviar para aprovação
-                  </Button>
-                </>
+                <Button
+                  className="w-full"
+                  disabled={busy || !canComplete}
+                  onClick={() => void handleComplete()}
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Enviar para aprovação
+                </Button>
               )}
               <Button variant="outline" className="w-full" asChild>
                 <Link to={`/tickets/${ticket.id}`}>Ver detalhe completo</Link>

@@ -5,11 +5,8 @@ import {
   FileText,
   ListTodo,
   Paperclip,
-  Pause,
-  Play,
   Plus,
   Receipt,
-  Square,
   Trash2,
   Upload,
 } from 'lucide-react'
@@ -23,9 +20,7 @@ import {
   getProjectTotalMinutes,
   getTaskTotalMinutes,
 } from '@/lib/project'
-import { formatSeconds, getTimerTotalSeconds } from '@/lib/timer'
 import { useAuthStore } from '@/stores/authStore'
-import { useTimerStore } from '@/stores/timerStore'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusAlert } from '@/components/shared/StatusAlert'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -81,15 +76,9 @@ function parseError(error: unknown): string {
   })
 }
 
-function taskTimerLabel(project: Project, task: ProjectTask): string {
-  return `${project.name} · ${task.title}`
-}
-
 export default function ProjectDetailPage(): JSX.Element {
   const { id } = useParams()
   const user = useAuthStore((state) => state.user)
-  const timers = useTimerStore((state) => state.timers)
-  const setTimers = useTimerStore((state) => state.setTimers)
   const canManage = user?.role === 'manager' || user?.role === 'admin'
 
   const [project, setProject] = useState<Project | null>(null)
@@ -123,15 +112,6 @@ export default function ProjectDetailPage(): JSX.Element {
     if (!project || !selectedExpenseId) return null
     return (project.expenses ?? []).find((e) => e.id === selectedExpenseId) ?? null
   }, [project, selectedExpenseId])
-
-  function getTaskTimer(taskId: string) {
-    return timers.find((timer) => timer.entityType === 'project_task' && timer.entityId === taskId)
-  }
-
-  async function refreshTimers(): Promise<void> {
-    const result = await ipc.getActiveTimers()
-    setTimers(result)
-  }
 
   async function loadProject(): Promise<void> {
     if (!id) {
@@ -168,15 +148,7 @@ export default function ProjectDetailPage(): JSX.Element {
 
   useEffect(() => {
     void loadProject()
-    void refreshTimers()
   }, [id])
-
-  useEffect(() => {
-    const unsubscribe = ipc.onTimerTick((activeTimers) => {
-      setTimers(activeTimers)
-    })
-    return () => unsubscribe()
-  }, [setTimers])
 
   async function runAction(action: () => Promise<void>, successMessage: string): Promise<void> {
     setError(null)
@@ -626,7 +598,6 @@ export default function ProjectDetailPage(): JSX.Element {
           ) : (
             <div className="space-y-4">
               {project.tasks.map((task) => {
-                const timer = getTaskTimer(task.id)
                 const taskEdit = taskEditDraftById[task.id] ?? {
                   title: task.title,
                   description: task.description ?? '',
@@ -734,94 +705,6 @@ export default function ProjectDetailPage(): JSX.Element {
                           </div>
                         </div>
                       ) : null}
-
-                      {/* Cronômetro */}
-                      <div className="rounded-lg border p-3">
-                        <p className="mb-2 text-sm font-medium">Cronômetro</p>
-                        {!timer ? (
-                          <Button
-                            variant="outline"
-                            className="gap-2"
-                            disabled={busy}
-                            onClick={() =>
-                              void runAction(async () => {
-                                await ipc.startTimer(
-                                  task.id,
-                                  'project_task',
-                                  taskTimerLabel(project, task),
-                                )
-                                await refreshTimers()
-                              }, 'Cronômetro iniciado.')
-                            }
-                          >
-                            <Play className="h-4 w-4" />
-                            Iniciar
-                          </Button>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                              <p className="font-mono text-2xl font-semibold">
-                                {formatSeconds(getTimerTotalSeconds(timer))}
-                              </p>
-                              <Badge variant={timer.state === 'running' ? 'default' : 'secondary'}>
-                                {timer.state === 'running' ? 'Em andamento' : 'Pausado'}
-                              </Badge>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {timer.state === 'running' ? (
-                                <Button
-                                  variant="outline"
-                                  className="gap-2"
-                                  disabled={busy}
-                                  onClick={() =>
-                                    void runAction(async () => {
-                                      await ipc.pauseTimer(timer.id)
-                                      await refreshTimers()
-                                    }, 'Cronômetro pausado.')
-                                  }
-                                >
-                                  <Pause className="h-4 w-4" />
-                                  Pausar
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  className="gap-2"
-                                  disabled={busy}
-                                  onClick={() =>
-                                    void runAction(async () => {
-                                      await ipc.startTimer(
-                                        task.id,
-                                        'project_task',
-                                        taskTimerLabel(project, task),
-                                      )
-                                      await refreshTimers()
-                                    }, 'Cronômetro retomado.')
-                                  }
-                                >
-                                  <Play className="h-4 w-4" />
-                                  Retomar
-                                </Button>
-                              )}
-                              <Button
-                                variant="destructive"
-                                className="gap-2"
-                                disabled={busy}
-                                onClick={() =>
-                                  void runAction(async () => {
-                                    await ipc.stopTimer(timer.id)
-                                    await refreshTimers()
-                                    await loadProject()
-                                  }, 'Cronômetro parado e apontamento automático registrado.')
-                                }
-                              >
-                                <Square className="h-4 w-4" />
-                                Parar
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
 
                       {/* Novo apontamento */}
                       <div className="rounded-lg border p-3">

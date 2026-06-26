@@ -7,11 +7,8 @@ import {
   FileText,
   History,
   Paperclip,
-  Pause,
-  Play,
   Plus,
   Receipt,
-  Square,
   Trash2,
   Upload,
 } from 'lucide-react'
@@ -21,9 +18,7 @@ import { TicketZeevActions } from '@/components/tickets/TicketZeevActions'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { fileToBase64 } from '@/lib/files'
-import { formatSeconds, getTimerTotalSeconds } from '@/lib/timer'
 import { useAuthStore } from '@/stores/authStore'
-import { useTimerStore } from '@/stores/timerStore'
 import { SlaIndicator } from '@/components/tickets/SlaIndicator'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusAlert } from '@/components/shared/StatusAlert'
@@ -65,15 +60,12 @@ function stepLabel(workflow: Workflow | null, stepId: string): string {
 export default function TicketDetailPage(): JSX.Element {
   const { id } = useParams()
   const currentUser = useAuthStore((state) => state.user)
-  const timers = useTimerStore((state) => state.timers)
-  const setTimers = useTimerStore((state) => state.setTimers)
 
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [nextStepId, setNextStepId] = useState('')
   const [isTransitioning, setIsTransitioning] = useState(false)
-  const [isTimerLoading, setIsTimerLoading] = useState(false)
   const [expenseDescription, setExpenseDescription] = useState('')
   const [expenseSupplier, setExpenseSupplier] = useState('')
   const [expenseQuantity, setExpenseQuantity] = useState('1')
@@ -89,13 +81,6 @@ export default function TicketDetailPage(): JSX.Element {
     if (!workflow || !ticket) return []
     return workflow.steps.filter((step) => step.id !== ticket.status)
   }, [workflow, ticket])
-
-  const currentTicketTimer = useMemo(() => {
-    if (!ticket) return null
-    return (
-      timers.find((timer) => timer.entityType === 'ticket' && timer.entityId === ticket.id) ?? null
-    )
-  }, [timers, ticket])
 
   useEffect(() => {
     async function load(): Promise<void> {
@@ -146,61 +131,6 @@ export default function TicketDetailPage(): JSX.Element {
       setError(getErrorMessage(err))
     } finally {
       setIsTransitioning(false)
-    }
-  }
-
-  async function refreshTimers(): Promise<void> {
-    const active = await ipc.getActiveTimers()
-    setTimers(active)
-  }
-
-  async function handleStartOrResumeTimer(): Promise<void> {
-    if (!ticket) return
-    setError(null)
-    setFeedback(null)
-    setIsTimerLoading(true)
-    try {
-      await ipc.startTimer(ticket.id, 'ticket', ticket.title)
-      await refreshTimers()
-      setFeedback('Cronômetro iniciado.')
-    } catch (err) {
-      setError(getErrorMessage(err))
-    } finally {
-      setIsTimerLoading(false)
-    }
-  }
-
-  async function handlePauseTimer(): Promise<void> {
-    if (!currentTicketTimer) return
-    setError(null)
-    setFeedback(null)
-    setIsTimerLoading(true)
-    try {
-      await ipc.pauseTimer(currentTicketTimer.id)
-      await refreshTimers()
-      setFeedback('Cronômetro pausado.')
-    } catch (err) {
-      setError(getErrorMessage(err))
-    } finally {
-      setIsTimerLoading(false)
-    }
-  }
-
-  async function handleStopTimer(): Promise<void> {
-    if (!currentTicketTimer) return
-    setError(null)
-    setFeedback(null)
-    setIsTimerLoading(true)
-    try {
-      await ipc.stopTimer(currentTicketTimer.id)
-      await refreshTimers()
-      const updatedTicket = await ipc.getTicketById(currentTicketTimer.entityId)
-      setTicket(updatedTicket)
-      setFeedback('Cronômetro parado e apontamento gerado automaticamente.')
-    } catch (err) {
-      setError(getErrorMessage(err))
-    } finally {
-      setIsTimerLoading(false)
     }
   }
 
@@ -665,77 +595,6 @@ export default function TicketDetailPage(): JSX.Element {
 
           {/* Coluna lateral */}
           <div className="space-y-6">
-            {/* Cronômetro */}
-            <Card className="surface-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Play className="h-4 w-4 text-muted-foreground" />
-                  Cronômetro
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!currentTicketTimer ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">Nenhum cronômetro ativo.</p>
-                    <Button
-                      onClick={() => void handleStartOrResumeTimer()}
-                      disabled={isTimerLoading}
-                      className="w-full gap-2"
-                    >
-                      <Play className="h-4 w-4" />
-                      {isTimerLoading ? 'Processando...' : 'Iniciar cronômetro'}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="rounded-lg border bg-muted/30 p-4 text-center">
-                      <p className="font-mono text-3xl font-semibold tracking-tight">
-                        {formatSeconds(getTimerTotalSeconds(currentTicketTimer))}
-                      </p>
-                      <Badge
-                        variant={currentTicketTimer.state === 'running' ? 'default' : 'secondary'}
-                        className="mt-2"
-                      >
-                        {currentTicketTimer.state === 'running' ? 'Em andamento' : 'Pausado'}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {currentTicketTimer.state === 'running' ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => void handlePauseTimer()}
-                          disabled={isTimerLoading}
-                          className="gap-2"
-                        >
-                          <Pause className="h-4 w-4" />
-                          Pausar
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          onClick={() => void handleStartOrResumeTimer()}
-                          disabled={isTimerLoading}
-                          className="gap-2"
-                        >
-                          <Play className="h-4 w-4" />
-                          Retomar
-                        </Button>
-                      )}
-                      <Button
-                        variant="destructive"
-                        onClick={() => void handleStopTimer()}
-                        disabled={isTimerLoading}
-                        className="gap-2"
-                      >
-                        <Square className="h-4 w-4" />
-                        Parar
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
             {/* Transição de etapa */}
             <Card className="surface-card">
               <CardHeader>

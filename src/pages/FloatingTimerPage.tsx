@@ -165,7 +165,7 @@ export default function FloatingTimerPage(): JSX.Element {
           <EmptyState
             icon={Timer}
             title="Nenhum cronômetro ativo"
-            description="Inicie um cronômetro em um ticket ou tarefa."
+            description="Inicie um cronômetro na tela de atendimento da solicitação."
           />
         ) : (
           timers.map((timer) => (
