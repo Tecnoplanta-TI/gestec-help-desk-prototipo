@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pause, PanelLeft, Pin, PinOff, Play, Square, Timer, X } from 'lucide-react'
 import { ipc } from '@/lib/ipc'
+import { isElectron } from '@/lib/platform'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { useTimerStore } from '@/stores/timerStore'
 import { formatSeconds, getTimerTotalSeconds } from '@/lib/timer'
@@ -132,15 +133,17 @@ export default function FloatingTimerPage(): JSX.Element {
           >
             <PanelLeft className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            aria-label={pinned ? 'Desfixar janela' : 'Fixar janela'}
-            onClick={() => void handleTogglePin()}
-          >
-            {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-          </Button>
+          {isElectron() ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-label={pinned ? 'Desfixar janela' : 'Fixar janela'}
+              onClick={() => void handleTogglePin()}
+            >
+              {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="icon"

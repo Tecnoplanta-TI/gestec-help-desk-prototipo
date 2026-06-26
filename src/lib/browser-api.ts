@@ -70,6 +70,8 @@ import type {
 } from '../../shared/types'
 import { clearBrowserAuthToken, getBrowserAuthToken, rpc, setBrowserAuthToken } from './browser-auth'
 
+let floatingPopup: Window | null = null
+
 export const browserAPI: ElectronAPI = {
   login: async (email: string, password: string): Promise<LoginResult> => {
     const result = await rpc<LoginResult>('auth:login', email, password)
@@ -360,11 +362,28 @@ export const browserAPI: ElectronAPI = {
   getActiveTimers: (): Promise<ActiveTimer[]> => rpc('timer:get-active'),
 
   openFloatingWindow: async (): Promise<void> => {
-    /* janela flutuante é exclusiva do Electron */
+    if (floatingPopup && !floatingPopup.closed) {
+      floatingPopup.focus()
+      return
+    }
+
+    floatingPopup = window.open(
+      '/floating',
+      'gestec-timer',
+      'popup=yes,width=380,height=560,menubar=no,toolbar=no,location=no,status=no',
+    )
   },
 
   closeFloatingWindow: async (): Promise<void> => {
-    /* janela flutuante é exclusiva do Electron */
+    if (window.opener) {
+      window.close()
+      return
+    }
+
+    if (floatingPopup && !floatingPopup.closed) {
+      floatingPopup.close()
+    }
+    floatingPopup = null
   },
 
   toggleFloatingPin: async (pinned: boolean): Promise<boolean> => pinned,

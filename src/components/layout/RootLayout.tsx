@@ -19,7 +19,6 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ipc } from '@/lib/ipc'
-import { isElectron } from '@/lib/platform'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { cn } from '@/lib/utils'
@@ -237,21 +236,19 @@ export default function RootLayout(): JSX.Element {
                 </TooltipContent>
               </Tooltip>
 
-              {isElectron() ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => void handleOpenFloating()}
-                      aria-label="Abrir timer flutuante"
-                    >
-                      <Timer className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Timer flutuante</TooltipContent>
-                </Tooltip>
-              ) : null}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => void handleOpenFloating()}
+                    aria-label="Abrir timer flutuante"
+                  >
+                    <Clock className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Timer flutuante</TooltipContent>
+              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -289,12 +286,10 @@ export default function RootLayout(): JSX.Element {
                     <p className="text-xs font-normal text-muted-foreground">{user?.email}</p>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {isElectron() ? (
-                    <DropdownMenuItem onClick={() => void handleOpenFloating()}>
-                      <Timer className="mr-2 h-4 w-4" />
-                      Timer flutuante
-                    </DropdownMenuItem>
-                  ) : null}
+                  <DropdownMenuItem onClick={() => void handleOpenFloating()}>
+                    <Clock className="mr-2 h-4 w-4" />
+                    Timer flutuante
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={toggleTheme}>
                     {theme === 'dark' ? (
                       <Sun className="mr-2 h-4 w-4" />
