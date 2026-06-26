@@ -13,7 +13,9 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusAlert } from '@/components/shared/StatusAlert'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { InlineLoader } from '@/components/shared/PageLoader'
+import { SlaIndicator } from '@/components/tickets/SlaIndicator'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import {
@@ -41,6 +43,13 @@ import {
 } from '@/components/ui/table'
 
 const PRIORITIES: TicketPriority[] = ['P1', 'P2', 'P3', 'P4']
+
+const PRIORITY_VARIANT: Record<TicketPriority, 'destructive' | 'default' | 'secondary' | 'outline'> = {
+  P1: 'destructive',
+  P2: 'default',
+  P3: 'secondary',
+  P4: 'outline',
+}
 
 const SCOPES: TicketListScope[] = ['mine', 'participated', 'accessible']
 
@@ -312,7 +321,11 @@ export default function TicketListPage(): JSX.Element {
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
                       <TableHead className="w-[140px] font-semibold">ID</TableHead>
                       <TableHead className="w-[200px] font-semibold">Solicitante</TableHead>
-                      <TableHead className="font-semibold">Descrição</TableHead>
+                      <TableHead className="min-w-[200px] font-semibold">Descrição</TableHead>
+                      <TableHead className="font-semibold">Prioridade</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="hidden font-semibold md:table-cell">SLA</TableHead>
+                      <TableHead className="hidden font-semibold lg:table-cell">Origem</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -327,8 +340,20 @@ export default function TicketListPage(): JSX.Element {
                           </Link>
                         </TableCell>
                         <TableCell className="text-sm">{ticket.requester.name}</TableCell>
-                        <TableCell className="max-w-0 truncate text-sm text-muted-foreground">
+                        <TableCell className="max-w-[280px] truncate text-sm text-muted-foreground">
                           {ticket.description || ticket.title}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={PRIORITY_VARIANT[ticket.priority]}>{ticket.priority}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {stepLabelById.get(ticket.status) ?? ticket.status}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <SlaIndicator status={ticket.sla.status} deadline={ticket.sla.deadline} />
+                        </TableCell>
+                        <TableCell className="hidden capitalize text-muted-foreground lg:table-cell">
+                          {ticket.source}
                         </TableCell>
                       </TableRow>
                     ))}

@@ -20,6 +20,7 @@ import {
   getTicketReportStats,
   listTicketsFiltered,
   startTicketService,
+  skipTicketInitialContact,
   submitTicketEvaluation,
   triageTicket,
   updateServiceTicket,
@@ -161,6 +162,17 @@ export function registerZeevHandlers(): void {
     if (!z.string().uuid().safeParse(ticketId).success) ipcError('INVALID_INPUT')
     try {
       return await startTicketService(ticketId as string, user)
+    } catch (e) {
+      if (e instanceof Error && e.message === 'FORBIDDEN') ipcError('FORBIDDEN')
+      throw e
+    }
+  })
+
+  rpcHandle('ticket:skip-initial-contact', async (_event, ticketId: unknown) => {
+    const user = await requireUser()
+    if (!z.string().uuid().safeParse(ticketId).success) ipcError('INVALID_INPUT')
+    try {
+      return await skipTicketInitialContact(ticketId as string, user)
     } catch (e) {
       if (e instanceof Error && e.message === 'FORBIDDEN') ipcError('FORBIDDEN')
       throw e

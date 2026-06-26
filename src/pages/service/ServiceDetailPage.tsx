@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Clock, MessageSquare, Package, Play, Trash2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock, MessageSquare, Package, Plus, SkipForward, Trash2 } from 'lucide-react'
 import type {
   Appointment,
   CostCenter,
@@ -260,11 +260,29 @@ export default function ServiceDetailPage(): JSX.Element {
     try {
       const updated = await ipc.startTicketService(ticket.id)
       setTicket(updated)
-      toast({ title: 'Contato inicial iniciado' })
+      toast({ title: 'Contato inicial concluído' })
     } catch (e) {
       toast({
         variant: 'destructive',
-        title: 'Não foi possível iniciar',
+        title: 'Não foi possível concluir',
+        description: getIpcErrorMessage(e),
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleSkipInitialContact(): Promise<void> {
+    if (!ticket) return
+    setBusy(true)
+    try {
+      const updated = await ipc.skipTicketInitialContact(ticket.id)
+      setTicket(updated)
+      toast({ title: 'Contato inicial ignorado' })
+    } catch (e) {
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível pular',
         description: getIpcErrorMessage(e),
       })
     } finally {
@@ -442,8 +460,8 @@ export default function ServiceDetailPage(): JSX.Element {
 
       {isAwaiting && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground">
-          Revise os dados do ticket e clique em <strong>Iniciar contato inicial</strong> para
-          registrar o primeiro atendimento.
+          Revise os dados do ticket e clique em <strong>Concluir</strong> para registrar o contato
+          inicial, ou em <strong>Pular</strong> se não for necessário.
         </div>
       )}
 
@@ -1046,10 +1064,21 @@ export default function ServiceDetailPage(): JSX.Element {
             </CardHeader>
             <CardContent className="space-y-2">
               {isAwaiting && (
-                <Button className="w-full" disabled={busy} onClick={() => void handleStartService()}>
-                  <Play className="mr-2 h-4 w-4" />
-                  Iniciar contato inicial
-                </Button>
+                <>
+                  <Button className="w-full" disabled={busy} onClick={() => void handleStartService()}>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Concluir
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    disabled={busy}
+                    onClick={() => void handleSkipInitialContact()}
+                  >
+                    <SkipForward className="mr-2 h-4 w-4" />
+                    Pular
+                  </Button>
+                </>
               )}
               {isInService && (
                 <>

@@ -128,6 +128,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startTicketService: (ticketId: string): Promise<Ticket> =>
     ipcRenderer.invoke('ticket:start-service', ticketId),
 
+  skipTicketInitialContact: (ticketId: string): Promise<Ticket> =>
+    ipcRenderer.invoke('ticket:skip-initial-contact', ticketId),
+
   completeTicketService: (payload: CompleteTicketServicePayload): Promise<Ticket> =>
     ipcRenderer.invoke('ticket:complete-service', payload),
 

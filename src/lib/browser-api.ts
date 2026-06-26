@@ -116,6 +116,9 @@ export const browserAPI: ElectronAPI = {
   startTicketService: (ticketId: string): Promise<Ticket> =>
     rpc('ticket:start-service', ticketId),
 
+  skipTicketInitialContact: (ticketId: string): Promise<Ticket> =>
+    rpc('ticket:skip-initial-contact', ticketId),
+
   completeTicketService: (payload: CompleteTicketServicePayload): Promise<Ticket> =>
     rpc('ticket:complete-service', payload),
 

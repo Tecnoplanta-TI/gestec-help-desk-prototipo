@@ -291,6 +291,30 @@ export async function startTicketService(ticketId: string, user: User): Promise<
   return updated
 }
 
+export async function skipTicketInitialContact(ticketId: string, user: User): Promise<Ticket> {
+  const existing = await readTicket(ticketId)
+  if (existing.status !== ZEEV_STEPS.awaiting_service) throw new Error('INVALID_STATUS')
+  if (!canAccessServiceTicket(existing, user)) throw new Error('FORBIDDEN')
+
+  const now = new Date().toISOString()
+  const updated = await saveTicket({
+    ...existing,
+    status: ZEEV_STEPS.in_service,
+    assigneeId: existing.assigneeId ?? user.id,
+    initialContactSkipped: true,
+    updatedAt: now,
+  })
+
+  await writeAuditLog({
+    entityType: 'ticket',
+    entityId: existing.id,
+    action: 'skip_initial_contact',
+    userId: user.id,
+  })
+
+  return updated
+}
+
 export async function updateServiceTicket(
   payload: UpdateServiceTicketPayload,
   user: User,

@@ -606,6 +606,7 @@ export interface Ticket {
   newSecuritySealCode?: string
   supportNotes?: string
   downtimeMinutes?: number
+  initialContactSkipped?: boolean
   // Registros
   tasks?: TicketTask[]
   comments?: TicketComment[]
@@ -907,6 +908,7 @@ export interface ElectronAPI {
   approveTicket: (payload: ApproveTicketPayload) => Promise<Ticket>
   triageTicket: (payload: TriageTicketPayload) => Promise<Ticket>
   startTicketService: (ticketId: string) => Promise<Ticket>
+  skipTicketInitialContact: (ticketId: string) => Promise<Ticket>
   completeTicketService: (payload: CompleteTicketServicePayload) => Promise<Ticket>
   updateServiceTicket: (payload: UpdateServiceTicketPayload) => Promise<Ticket>
   approveTicketCompletion: (payload: ApproveCompletionPayload) => Promise<Ticket>
