@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pause, Pin, PinOff, Play, Square, Timer, X } from 'lucide-react'
+import { Pause, PanelLeft, Pin, PinOff, Play, Square, Timer, X } from 'lucide-react'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { useTimerStore } from '@/stores/timerStore'
@@ -28,6 +28,8 @@ function parseError(error: unknown): string {
 export default function FloatingTimerPage(): JSX.Element {
   const timers = useTimerStore((state) => state.timers)
   const setTimers = useTimerStore((state) => state.setTimers)
+  const pinnedToSidebar = useTimerStore((state) => state.pinnedToSidebar)
+  const setPinnedToSidebar = useTimerStore((state) => state.setPinnedToSidebar)
 
   const [error, setError] = useState<string | null>(null)
   const [pinned, setPinned] = useState(true)
@@ -86,6 +88,10 @@ export default function FloatingTimerPage(): JSX.Element {
     }
   }
 
+  async function handleToggleSidebarPin(): Promise<void> {
+    setPinnedToSidebar(!pinnedToSidebar)
+  }
+
   async function handleTogglePin(): Promise<void> {
     try {
       const next = await ipc.toggleFloatingPin(!pinned)
@@ -117,6 +123,15 @@ export default function FloatingTimerPage(): JSX.Element {
           </div>
         </div>
         <div className="flex gap-1">
+          <Button
+            variant={pinnedToSidebar ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-7 w-7"
+            aria-label={pinnedToSidebar ? 'Remover da barra lateral' : 'Fixar na barra lateral'}
+            onClick={() => void handleToggleSidebarPin()}
+          >
+            <PanelLeft className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

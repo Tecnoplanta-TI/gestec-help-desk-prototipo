@@ -23,6 +23,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { PriorityCriteriaCard } from '@/components/tickets/PriorityCriteriaCard'
+import {
+  TicketCancellationRepeater,
+  type CancellationRow,
+} from '@/components/tickets/TicketCancellationRepeater'
 import { ipc } from '@/lib/ipc'
 
 const TYPES: TicketType[] = [
@@ -122,7 +128,9 @@ export function DynamicTicketForm({
     ...initial,
   })
   const [fieldError, setFieldError] = useState<string | null>(null)
-  const [cancelRows, setCancelRows] = useState([{ zeevRequestNumber: '', justification: '' }])
+  const [cancelRows, setCancelRows] = useState<CancellationRow[]>([
+    { zeevRequestNumber: '', justification: '' },
+  ])
 
   useEffect(() => {
     void ipc.listCostCenters().then(setCostCenters).catch(() => undefined)
@@ -209,104 +217,111 @@ export function DynamicTicketForm({
         </p>
       )}
 
-      <div className="rounded-lg border bg-muted/20 p-4">
-        <p className="mb-3 text-sm font-medium text-foreground">Solicitante</p>
-        <div className="space-y-2">
-          <Label htmlFor="requester-name">
-            Nome <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="requester-name"
-            value={form.requesterName}
-            onChange={(e) => setForm((f) => ({ ...f, requesterName: e.target.value }))}
-            placeholder="Nome completo"
-            autoComplete="name"
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Tipo solicitação *</Label>
-          <Select
-            value={form.type}
-            onValueChange={(v) => setForm((f) => ({ ...f, type: v as TicketType }))}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {TYPE_LABEL[t]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Centro de custo *</Label>
-          <Select
-            value={form.costCenter}
-            onValueChange={(v) => setForm((f) => ({ ...f, costCenter: v }))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione" />
-            </SelectTrigger>
-            <SelectContent>
-              {costCenters.map((cc) => (
-                <SelectItem key={cc.id} value={cc.code}>
-                  {cc.code} — {cc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {form.type !== 'cancellation' && (
-        <div className="grid gap-4 sm:grid-cols-2">
+      <Card className="w-full border bg-muted/20 shadow-none">
+        <CardContent className="space-y-4 p-4 pt-4">
+          <p className="text-sm font-medium text-foreground">Solicitante</p>
           <div className="space-y-2">
-            <Label>Prioridade *</Label>
-            <Select
-              value={form.priority}
-              onValueChange={(v) => setForm((f) => ({ ...f, priority: v as TicketPriority }))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRIORITIES.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              P1 imediato · P2 4–8h · P3 1–3 dias · P4 3–5 dias
-            </p>
+            <Label htmlFor="requester-name">
+              Nome <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="requester-name"
+              value={form.requesterName}
+              onChange={(e) => setForm((f) => ({ ...f, requesterName: e.target.value }))}
+              placeholder="Nome completo"
+              autoComplete="name"
+            />
           </div>
-          <div className="space-y-2">
-            <Label>Grupo de serviços *</Label>
-            <Select
-              value={form.serviceGroup}
-              onValueChange={(v) => setForm((f) => ({ ...f, serviceGroup: v as ServiceGroup }))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SERVICE_GROUPS.map((g) => (
-                  <SelectItem key={g} value={g}>
-                    {SERVICE_GROUP_LABEL[g]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        </CardContent>
+      </Card>
+
+      <Card className="w-full border shadow-none">
+        <CardContent className="space-y-4 p-4 pt-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Tipo solicitação *</Label>
+              <Select
+                value={form.type}
+                onValueChange={(v) => setForm((f) => ({ ...f, type: v as TicketType }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {TYPE_LABEL[t]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Centro de custo *</Label>
+              <Select
+                value={form.costCenter}
+                onValueChange={(v) => setForm((f) => ({ ...f, costCenter: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {costCenters.map((cc) => (
+                    <SelectItem key={cc.id} value={cc.code}>
+                      {cc.code} — {cc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </div>
-      )}
+
+          {form.type !== 'cancellation' && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Prioridade *</Label>
+                <Select
+                  value={form.priority}
+                  onValueChange={(v) => setForm((f) => ({ ...f, priority: v as TicketPriority }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRIORITIES.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Grupo de serviços *</Label>
+                <Select
+                  value={form.serviceGroup}
+                  onValueChange={(v) => setForm((f) => ({ ...f, serviceGroup: v as ServiceGroup }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_GROUPS.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {SERVICE_GROUP_LABEL[g]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {form.type !== 'cancellation' ? (
+        <PriorityCriteriaCard highlight={form.priority} />
+      ) : null}
 
       {show('service') && (
         <div className="space-y-2">
@@ -443,34 +458,7 @@ export function DynamicTicketForm({
       )}
 
       {show('cancellationItems') && (
-        <div className="space-y-2">
-          <Label>Solicitações a cancelar *</Label>
-          {cancelRows.map((row, idx) => (
-            <div key={idx} className="grid gap-2 sm:grid-cols-2">
-              <Input
-                placeholder="Número da solicitação"
-                value={row.zeevRequestNumber}
-                onChange={(e) => {
-                  const next = [...cancelRows]
-                  next[idx] = { ...next[idx], zeevRequestNumber: e.target.value }
-                  setCancelRows(next)
-                }}
-              />
-              <Input
-                placeholder="Justificativa"
-                value={row.justification}
-                onChange={(e) => {
-                  const next = [...cancelRows]
-                  next[idx] = { ...next[idx], justification: e.target.value }
-                  setCancelRows(next)
-                }}
-              />
-            </div>
-          ))}
-          <Button type="button" variant="outline" size="sm" onClick={() => setCancelRows([...cancelRows, { zeevRequestNumber: '', justification: '' }])}>
-            Adicionar linha
-          </Button>
-        </div>
+        <TicketCancellationRepeater rows={cancelRows} onChange={setCancelRows} />
       )}
 
       {form.type !== 'cancellation' && (

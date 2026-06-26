@@ -10,6 +10,7 @@ import {
   Menu,
   MessageSquare,
   Moon,
+  Plug,
   Sun,
   Ticket,
   Timer,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ipc } from '@/lib/ipc'
+import { isElectron } from '@/lib/platform'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { cn } from '@/lib/utils'
@@ -35,6 +37,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PageLoader } from '@/components/shared/PageLoader'
+import { SidebarTimerPanel } from '@/components/layout/SidebarTimerPanel'
+import { useTimerStore } from '@/stores/timerStore'
 
 interface NavItem {
   to: string
@@ -51,8 +55,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Principal',
     items: [
-      { to: '/tickets', label: 'Tickets', icon: Ticket },
-      { to: '/tickets/mine', label: 'Meus tickets', icon: Ticket },
+      { to: '/tickets', label: 'Acompanhar solicitações', icon: Ticket },
+      { to: '/tickets/mine', label: 'Minhas solicitações', icon: Ticket },
       { to: '/tickets/kanban', label: 'Kanban', icon: Columns3 },
       { to: '/projects', label: 'Projetos', icon: FolderKanban },
       { to: '/reports/dashboard', label: 'Indicadores', icon: BarChart3 },
@@ -77,6 +81,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: '/settings/workflows', label: 'Workflows', icon: GitBranch },
       { to: '/settings/sla', label: 'SLA', icon: Clock },
       { to: '/settings/discord', label: 'Discord', icon: MessageSquare },
+      { to: '/settings/integrations', label: 'Integrações', icon: Plug },
     ],
   },
 ]
@@ -140,6 +145,8 @@ export default function RootLayout(): JSX.Element {
   const { user, isAuthenticated, isSessionReady, clearAuth } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const pinnedToSidebar = useTimerStore((s) => s.pinnedToSidebar)
+  const setPinnedToSidebar = useTimerStore((s) => s.setPinnedToSidebar)
 
   const initials = user?.name
     ?.split(' ')
@@ -181,6 +188,7 @@ export default function RootLayout(): JSX.Element {
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             <SidebarNav />
+            <SidebarTimerPanel />
           </div>
         </aside>
 
@@ -202,6 +210,7 @@ export default function RootLayout(): JSX.Element {
                   </SheetHeader>
                   <div className="p-4">
                     <SidebarNav onNavigate={() => setMobileOpen(false)} />
+                    <SidebarTimerPanel />
                   </div>
                 </SheetContent>
               </Sheet>
@@ -215,16 +224,34 @@ export default function RootLayout(): JSX.Element {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="ghost"
+                    variant={pinnedToSidebar ? 'secondary' : 'ghost'}
                     size="icon"
-                    onClick={() => void handleOpenFloating()}
-                    aria-label="Abrir timer flutuante"
+                    onClick={() => setPinnedToSidebar(!pinnedToSidebar)}
+                    aria-label={pinnedToSidebar ? 'Ocultar timer na barra' : 'Fixar timer na barra lateral'}
                   >
                     <Timer className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Timer flutuante</TooltipContent>
+                <TooltipContent>
+                  {pinnedToSidebar ? 'Ocultar cronômetro na barra' : 'Fixar cronômetro na barra lateral'}
+                </TooltipContent>
               </Tooltip>
+
+              {isElectron() ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => void handleOpenFloating()}
+                      aria-label="Abrir timer flutuante"
+                    >
+                      <Timer className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Timer flutuante</TooltipContent>
+                </Tooltip>
+              ) : null}
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -262,10 +289,12 @@ export default function RootLayout(): JSX.Element {
                     <p className="text-xs font-normal text-muted-foreground">{user?.email}</p>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => void handleOpenFloating()}>
-                    <Timer className="mr-2 h-4 w-4" />
-                    Timer flutuante
-                  </DropdownMenuItem>
+                  {isElectron() ? (
+                    <DropdownMenuItem onClick={() => void handleOpenFloating()}>
+                      <Timer className="mr-2 h-4 w-4" />
+                      Timer flutuante
+                    </DropdownMenuItem>
+                  ) : null}
                   <DropdownMenuItem onClick={toggleTheme}>
                     {theme === 'dark' ? (
                       <Sun className="mr-2 h-4 w-4" />

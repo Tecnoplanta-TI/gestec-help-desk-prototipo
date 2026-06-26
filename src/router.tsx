@@ -16,10 +16,11 @@
  * /settings/*         → configurações (usuários, workflows, SLA, Discord, valores)
  */
 
-import { createHashRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, createHashRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import type { ComponentType } from 'react'
 import { PageLoader } from './components/shared/PageLoader'
+import { isElectron } from './lib/platform'
 
 // Layout raiz (sidebar + header)
 // Será criado na fase de UI — placeholder por enquanto
@@ -43,12 +44,16 @@ const ApprovalsAppPage = lazy(() => import('./pages/approvals/ApprovalsAppPage')
 const CancellationApprovalsPage = lazy(() => import('./pages/approvals/CancellationApprovalsPage'))
 const ReportsDashboardPage = lazy(() => import('./pages/reports/ReportsDashboardPage'))
 const BillingReportPage = lazy(() => import('./pages/reports/BillingReportPage'))
+const TicketEvaluationPage = lazy(() => import('./pages/tickets/TicketEvaluationPage'))
+const DeliveredEquipmentPage = lazy(() => import('./pages/service/DeliveredEquipmentPage'))
 const FloatingTimerPage = lazy(() => import('./pages/FloatingTimerPage'))
 const WorkflowsPage = lazy(() => import('./pages/settings/WorkflowsPage'))
 const UsersPage = lazy(() => import('./pages/settings/UsersPage'))
 const RatesPage = lazy(() => import('./pages/settings/RatesPage'))
 const SlaPage = lazy(() => import('./pages/settings/SlaPage'))
 const DiscordNotificationsPage = lazy(() => import('./pages/settings/DiscordNotificationsPage'))
+const ApiIntegrationsListPage = lazy(() => import('./pages/settings/ApiIntegrationsListPage'))
+const ApiIntegrationDetailPage = lazy(() => import('./pages/settings/ApiIntegrationDetailPage'))
 
 function withSuspense(Component: ComponentType): JSX.Element {
   return (
@@ -58,8 +63,8 @@ function withSuspense(Component: ComponentType): JSX.Element {
   )
 }
 
-// Usa HashRouter para compatibilidade com Electron (sem servidor HTTP para rotas)
-export const router = createHashRouter([
+// HashRouter no Electron (file://); BrowserRouter no navegador
+const routes = [
   {
     path: '/login',
     element: withSuspense(LoginPage),
@@ -76,10 +81,12 @@ export const router = createHashRouter([
       { path: 'tickets', element: withSuspense(TicketListPage) },
       { path: 'tickets/mine', element: withSuspense(TicketListPage) },
       { path: 'tickets/kanban', element: withSuspense(TicketKanbanPage) },
+      { path: 'tickets/:id/evaluate', element: withSuspense(TicketEvaluationPage) },
       { path: 'tickets/:id', element: withSuspense(TicketDetailPage) },
       { path: 'triage', element: withSuspense(TriagePage) },
       { path: 'triage/:id', element: withSuspense(TriageDetailPage) },
       { path: 'service', element: withSuspense(ServicePage) },
+      { path: 'service/:id/equipment', element: withSuspense(DeliveredEquipmentPage) },
       { path: 'service/:id', element: withSuspense(ServiceDetailPage) },
       { path: 'completion', element: withSuspense(CompletionPage) },
       { path: 'completion/:id', element: withSuspense(CompletionDetailPage) },
@@ -99,8 +106,13 @@ export const router = createHashRouter([
           { path: 'sla', element: withSuspense(SlaPage) },
           { path: 'rates', element: withSuspense(RatesPage) },
           { path: 'discord', element: withSuspense(DiscordNotificationsPage) },
+          { path: 'integrations/new', element: withSuspense(ApiIntegrationDetailPage) },
+          { path: 'integrations/:id', element: withSuspense(ApiIntegrationDetailPage) },
+          { path: 'integrations', element: withSuspense(ApiIntegrationsListPage) },
         ],
       },
     ],
   },
-])
+]
+
+export const router = isElectron() ? createHashRouter(routes) : createBrowserRouter(routes)

@@ -5,8 +5,6 @@ import { ZEEV_STEPS } from '../../../shared/lib/zeev-steps'
 import { hasPermission } from '../../../shared/lib/permissions'
 import { ipc } from '@/lib/ipc'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -25,11 +23,6 @@ export function TicketZeevActions({
 }: TicketZeevActionsProps): JSX.Element | null {
   const [justification, setJustification] = useState('')
   const [busy, setBusy] = useState(false)
-  const [evalScore, setEvalScore] = useState(8)
-  const [evalMet, setEvalMet] = useState(true)
-  const [evalFeedback, setEvalFeedback] = useState('')
-  const [evalNps, setEvalNps] = useState('')
-  const [evalExpectation, setEvalExpectation] = useState('')
 
   if (!user) return null
 
@@ -249,53 +242,11 @@ export function TicketZeevActions({
           <CardTitle>Avaliação do serviço</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Label>Atendido conforme expectativa?</Label>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2">
-              <input type="radio" checked={evalMet} onChange={() => setEvalMet(true)} /> Sim
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="radio" checked={!evalMet} onChange={() => setEvalMet(false)} /> Não
-            </label>
-          </div>
-          <Label>Nota (1–10)</Label>
-          <Input
-            type="number"
-            min={1}
-            max={10}
-            value={evalScore}
-            onChange={(e) => setEvalScore(Number(e.target.value))}
-          />
-          {evalScore <= 6 && (
-            <>
-              <Label>Justificativa NPS *</Label>
-              <Textarea value={evalNps} onChange={(e) => setEvalNps(e.target.value)} />
-            </>
-          )}
-          {!evalMet && (
-            <>
-              <Label>Qual era a expectativa? *</Label>
-              <Textarea value={evalExpectation} onChange={(e) => setEvalExpectation(e.target.value)} />
-            </>
-          )}
-          <Label>Feedback</Label>
-          <Textarea value={evalFeedback} onChange={(e) => setEvalFeedback(e.target.value)} />
-          <Button
-            disabled={busy}
-            onClick={() =>
-              run(() =>
-                ipc.submitTicketEvaluation({
-                  ticketId: ticket.id,
-                  metExpectation: evalMet,
-                  score: evalScore,
-                  feedback: evalFeedback,
-                  npsJustification: evalNps,
-                  expectation: evalExpectation,
-                }),
-              )
-            }
-          >
-            Enviar avaliação
+          <p className="text-sm text-muted-foreground">
+            Avalie o atendimento recebido. Notas baixas exigem justificativa.
+          </p>
+          <Button asChild>
+            <Link to={`/tickets/${ticket.id}/evaluate`}>Avaliar atendimento</Link>
           </Button>
         </CardContent>
       </Card>

@@ -287,18 +287,6 @@ export default function CompletionDetailPage(): JSX.Element {
             </CardContent>
           </Card>
 
-          <Card className="surface-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">O que foi realizado</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                {ticket.supportNotes || '—'}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="surface-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Apontamentos</CardTitle>
             </CardHeader>

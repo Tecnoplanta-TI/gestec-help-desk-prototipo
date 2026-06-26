@@ -3,38 +3,48 @@
  *
  * Estado global dos cronômetros ativos via Zustand.
  * Sincronizado com o Main Process via IPC (evento 'timer:tick').
- * Permite múltiplos cronômetros rodando simultaneamente.
  */
 
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { ActiveTimer } from '../../shared/types'
 
 interface TimerState {
   timers: ActiveTimer[]
+  pinnedToSidebar: boolean
   setTimers: (timers: ActiveTimer[]) => void
   upsertTimer: (timer: ActiveTimer) => void
   removeTimer: (timerId: string) => void
+  setPinnedToSidebar: (pinned: boolean) => void
 }
 
-export const useTimerStore = create<TimerState>((set) => ({
-  timers: [],
+export const useTimerStore = create<TimerState>()(
+  persist(
+    (set) => ({
+      timers: [],
+      pinnedToSidebar: false,
 
-  /** Substitui todos os timers (recebido via IPC tick) */
-  setTimers: (timers) => set({ timers }),
+      setTimers: (timers) => set({ timers }),
 
-  /** Insere ou atualiza um timer específico */
-  upsertTimer: (timer) =>
-    set((state) => {
-      const exists = state.timers.some((t) => t.id === timer.id)
-      if (exists) {
-        return { timers: state.timers.map((t) => (t.id === timer.id ? timer : t)) }
-      }
-      return { timers: [...state.timers, timer] }
+      upsertTimer: (timer) =>
+        set((state) => {
+          const exists = state.timers.some((t) => t.id === timer.id)
+          if (exists) {
+            return { timers: state.timers.map((t) => (t.id === timer.id ? timer : t)) }
+          }
+          return { timers: [...state.timers, timer] }
+        }),
+
+      removeTimer: (timerId) =>
+        set((state) => ({
+          timers: state.timers.filter((t) => t.id !== timerId),
+        })),
+
+      setPinnedToSidebar: (pinned) => set({ pinnedToSidebar: pinned }),
     }),
-
-  /** Remove um timer da lista (após stop) */
-  removeTimer: (timerId) =>
-    set((state) => ({
-      timers: state.timers.filter((t) => t.id !== timerId),
-    })),
-}))
+    {
+      name: 'gestec-timer-ui',
+      partialize: (state) => ({ pinnedToSidebar: state.pinnedToSidebar }),
+    },
+  ),
+)

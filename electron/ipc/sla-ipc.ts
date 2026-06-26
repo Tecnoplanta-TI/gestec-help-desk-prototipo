@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { rpcHandle } from './rpc-handle'
 import { z } from 'zod'
 import { resolveAuthenticatedUser } from '../services/session-user'
 import {
@@ -70,26 +70,26 @@ async function requireAdminUser() {
 }
 
 export function registerSlaHandlers(): void {
-  ipcMain.handle('sla:list', async () => {
+  rpcHandle('sla:list', async () => {
     await requireAuthenticatedUser()
     return listSlaRules()
   })
 
-  ipcMain.handle('sla:create', async (_event, payload: unknown) => {
+  rpcHandle('sla:create', async (_event, payload: unknown) => {
     await requireAdminUser()
     const parsed = CreateSlaRuleSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
     return createSlaRule(parsed.data)
   })
 
-  ipcMain.handle('sla:update', async (_event, payload: unknown) => {
+  rpcHandle('sla:update', async (_event, payload: unknown) => {
     await requireAdminUser()
     const parsed = UpdateSlaRuleSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
     return updateSlaRule(parsed.data)
   })
 
-  ipcMain.handle('sla:delete', async (_event, ruleId: unknown) => {
+  rpcHandle('sla:delete', async (_event, ruleId: unknown) => {
     await requireAdminUser()
     const parsed = z.string().uuid().safeParse(ruleId)
     if (!parsed.success) ipcError('INVALID_INPUT')

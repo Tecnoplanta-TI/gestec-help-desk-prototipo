@@ -11,6 +11,10 @@ const DEFAULT_MESSAGES: Record<string, string> = {
   UNAUTHORIZED: 'Sessão inválida. Faça login novamente.',
   FORBIDDEN: 'Seu perfil não possui permissão para esta ação.',
   INVALID_INPUT: 'Dados inválidos. Revise os campos e tente novamente.',
+  INVALID_CREDENTIALS: 'E-mail ou senha incorretos.',
+  ACCOUNT_DISABLED: 'Conta desativada. Contate o administrador.',
+  DATABASE_UNAVAILABLE:
+    'Servidor sem conexão com o banco. Reinicie a API (npm run dev:api:restart) com COSMOS_CONNECTION_STRING.',
   RATE_LIMIT_EXCEEDED: 'Muitas tentativas. Aguarde alguns instantes.',
   WORKFLOW_NOT_CONFIGURED:
     'Nenhum workflow padrão configurado. Acesse Configurações > Workflows.',
@@ -43,14 +47,23 @@ interface IpcErrorOptions {
  */
 export function getIpcErrorMessage(error: unknown, options: IpcErrorOptions = {}): string {
   const message = error instanceof Error ? error.message : String(error)
+  const code =
+    error && typeof error === 'object' && 'code' in error
+      ? String((error as { code?: string }).code ?? '')
+      : ''
   const { overrides = {}, fallback = 'Não foi possível concluir a operação.' } = options
 
-  for (const [code, friendly] of Object.entries(overrides)) {
-    if (message.includes(code)) return friendly
+  if (code) {
+    if (overrides[code]) return overrides[code]
+    if (DEFAULT_MESSAGES[code]) return DEFAULT_MESSAGES[code]
   }
 
-  for (const [code, friendly] of Object.entries(DEFAULT_MESSAGES)) {
-    if (message.includes(code)) return friendly
+  for (const [errorCode, friendly] of Object.entries(overrides)) {
+    if (message.includes(errorCode)) return friendly
+  }
+
+  for (const [errorCode, friendly] of Object.entries(DEFAULT_MESSAGES)) {
+    if (message.includes(errorCode)) return friendly
   }
 
   return fallback

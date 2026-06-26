@@ -1,5 +1,5 @@
 import { BlobServiceClient } from '@azure/storage-blob'
-import Store from 'electron-store'
+import { createAppStore } from '../lib/store'
 
 const DEFAULT_CONTAINER = 'gestec-attachments'
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
@@ -16,7 +16,7 @@ interface BlobStoreSchema {
   blobContainerName?: string
 }
 
-const store = new Store<BlobStoreSchema>()
+const store = createAppStore<BlobStoreSchema>()
 
 let blobServiceClient: BlobServiceClient | null = null
 

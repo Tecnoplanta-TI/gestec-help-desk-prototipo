@@ -11,24 +11,49 @@
 
 import Fastify from 'fastify'
 import { registerWebhookRoutes } from './routes/webhooks'
+import { registerRpcRoutes } from './routes/rpc'
+import { isCosmosConfigured } from '../services/cosmos'
 
 const server = Fastify({
   logger: process.env.NODE_ENV === 'development',
 })
 
+interface StartApiServerOptions {
+  cors?: boolean
+}
+
+function applyCors(): void {
+  server.addHook('onRequest', async (request, reply) => {
+    reply.header('Access-Control-Allow-Origin', '*')
+    reply.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    reply.header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+    if (request.method === 'OPTIONS') {
+      reply.status(204).send()
+    }
+  })
+}
+
 // ─── Health check ─────────────────────────────────────────────────────────────
 
 server.get('/health', async () => {
-  return { status: 'ok', app: 'gestec-help-desk', timestamp: new Date().toISOString() }
+  return {
+    status: 'ok',
+    app: 'gestec-help-desk',
+    cosmosConfigured: isCosmosConfigured(),
+    timestamp: new Date().toISOString(),
+  }
 })
 
 registerWebhookRoutes(server)
+registerRpcRoutes(server)
 
 // ─── Inicialização ────────────────────────────────────────────────────────────
 
-export async function startApiServer(): Promise<void> {
+export async function startApiServer(options: StartApiServerOptions = {}): Promise<void> {
+  if (options.cors) applyCors()
+
   const port = Number(process.env.PORT ?? 3847)
-  const host = '127.0.0.1' // somente localhost — sem exposição externa
+  const host = options.cors ? '0.0.0.0' : '127.0.0.1'
 
   try {
     await server.listen({ port, host })

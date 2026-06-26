@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { rpcHandle } from './rpc-handle'
 import { z } from 'zod'
 import { resolveAuthenticatedUser } from '../services/session-user'
 import {
@@ -83,7 +83,7 @@ const EvaluationSchema = z.object({
 })
 
 export function registerZeevHandlers(): void {
-  ipcMain.handle('ticket:list-filtered', async (_event, filter: unknown) => {
+  rpcHandle('ticket:list-filtered', async (_event, filter: unknown) => {
     const user = await requireUser()
     const parsed = z
       .object({
@@ -99,13 +99,14 @@ export function registerZeevHandlers(): void {
             'cancellation',
           ])
           .optional(),
+        scope: z.enum(['mine', 'participated', 'accessible']).optional(),
       })
       .safeParse(filter ?? {})
     if (!parsed.success) ipcError('INVALID_INPUT')
     return listTicketsFiltered(parsed.data, user)
   })
 
-  ipcMain.handle('ticket:update', async (_event, payload: unknown) => {
+  rpcHandle('ticket:update', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = z
       .object({
@@ -125,7 +126,7 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:approve', async (_event, payload: unknown) => {
+  rpcHandle('ticket:approve', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = ApproveSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -140,7 +141,7 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:triage', async (_event, payload: unknown) => {
+  rpcHandle('ticket:triage', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = TriageSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -155,7 +156,7 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:start-service', async (_event, ticketId: unknown) => {
+  rpcHandle('ticket:start-service', async (_event, ticketId: unknown) => {
     const user = await requireUser()
     if (!z.string().uuid().safeParse(ticketId).success) ipcError('INVALID_INPUT')
     try {
@@ -166,12 +167,12 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:complete-service', async (_event, payload: unknown) => {
+  rpcHandle('ticket:complete-service', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = z
       .object({
         ticketId: z.string().uuid(),
-        resolutionSummary: z.string().max(5000).optional(),
+        resolutionSummary: z.string().trim().max(5000).optional(),
         deliveredEquipment: z
           .array(
             z.object({
@@ -196,7 +197,7 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:update-service', async (_event, payload: unknown) => {
+  rpcHandle('ticket:update-service', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = z
       .object({
@@ -249,7 +250,7 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:approve-completion', async (_event, payload: unknown) => {
+  rpcHandle('ticket:approve-completion', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = z
       .object({
@@ -270,7 +271,7 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:submit-evaluation', async (_event, payload: unknown) => {
+  rpcHandle('ticket:submit-evaluation', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = EvaluationSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -282,7 +283,7 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:create-task', async (_event, payload: unknown) => {
+  rpcHandle('ticket:create-task', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = z
       .object({
@@ -296,7 +297,7 @@ export function registerZeevHandlers(): void {
     return createTicketTask(parsed.data, user.id)
   })
 
-  ipcMain.handle('ticket:update-task', async (_event, payload: unknown) => {
+  rpcHandle('ticket:update-task', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = z
       .object({
@@ -312,7 +313,7 @@ export function registerZeevHandlers(): void {
     return updateTicketTask(parsed.data, user.id)
   })
 
-  ipcMain.handle('ticket:create-appointment', async (_event, payload: unknown) => {
+  rpcHandle('ticket:create-appointment', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = z
       .object({
@@ -333,7 +334,7 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:delete-appointment', async (_event, payload: unknown) => {
+  rpcHandle('ticket:delete-appointment', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = z
       .object({
@@ -345,7 +346,7 @@ export function registerZeevHandlers(): void {
     return deleteTicketAppointment(parsed.data, user.id)
   })
 
-  ipcMain.handle('ticket:add-comment', async (_event, payload: unknown) => {
+  rpcHandle('ticket:add-comment', async (_event, payload: unknown) => {
     const user = await requireUser()
     const parsed = z
       .object({
@@ -363,18 +364,18 @@ export function registerZeevHandlers(): void {
     }
   })
 
-  ipcMain.handle('audit:list', async (_event, entityId: unknown) => {
+  rpcHandle('audit:list', async (_event, entityId: unknown) => {
     await requireUser()
     if (!z.string().uuid().safeParse(entityId).success) ipcError('INVALID_INPUT')
     return listAuditLogs(entityId as string)
   })
 
-  ipcMain.handle('cost-center:list', async () => {
+  rpcHandle('cost-center:list', async () => {
     await requireUser()
     return listCostCenters()
   })
 
-  ipcMain.handle('cost-center:create', async (_event, payload: unknown) => {
+  rpcHandle('cost-center:create', async (_event, payload: unknown) => {
     const user = await requireUser()
     if (user.role !== 'admin') ipcError('FORBIDDEN')
     const parsed = z.object({ code: z.string().min(1), name: z.string().min(1) }).safeParse(payload)
@@ -382,7 +383,7 @@ export function registerZeevHandlers(): void {
     return createCostCenter(parsed.data)
   })
 
-  ipcMain.handle('cost-center:update', async (_event, payload: unknown) => {
+  rpcHandle('cost-center:update', async (_event, payload: unknown) => {
     const user = await requireUser()
     if (user.role !== 'admin') ipcError('FORBIDDEN')
     const parsed = z
@@ -397,18 +398,18 @@ export function registerZeevHandlers(): void {
     return updateCostCenter(parsed.data)
   })
 
-  ipcMain.handle('app-config:get', async () => {
+  rpcHandle('app-config:get', async () => {
     await requireUser()
     return getAppConfig()
   })
 
-  ipcMain.handle('app-config:update', async (_event, payload: unknown) => {
+  rpcHandle('app-config:update', async (_event, payload: unknown) => {
     const user = await requireUser()
     if (user.role !== 'admin') ipcError('FORBIDDEN')
     return updateAppConfig(payload as Record<string, unknown>)
   })
 
-  ipcMain.handle('reports:ticket-stats', async () => {
+  rpcHandle('reports:ticket-stats', async () => {
     await requireUser()
     return getTicketReportStats()
   })

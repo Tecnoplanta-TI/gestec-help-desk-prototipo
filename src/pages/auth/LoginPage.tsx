@@ -11,14 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { StatusAlert } from '@/components/shared/StatusAlert'
 import { PageLoader } from '@/components/shared/PageLoader'
 
+import { getIpcErrorMessage } from '@/lib/errors'
+
 function mapLoginError(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error)
-  if (message.includes('INVALID_CREDENTIALS')) return 'E-mail ou senha incorretos.'
-  if (message.includes('ACCOUNT_DISABLED')) return 'Conta desativada. Contate o administrador.'
-  if (message.includes('RATE_LIMIT_EXCEEDED')) {
-    return 'Muitas tentativas de login. Tente novamente em alguns minutos.'
-  }
-  return 'Não foi possível realizar login. Tente novamente.'
+  return getIpcErrorMessage(error, {
+    fallback: 'Não foi possível realizar login. Tente novamente.',
+  })
 }
 
 export default function LoginPage(): JSX.Element {

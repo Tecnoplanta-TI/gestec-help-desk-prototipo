@@ -13,6 +13,7 @@ import {
   signToken,
   verifyToken,
 } from './auth'
+import { getRequestAuthToken } from './request-context'
 import { findUserById } from './user'
 
 export const OFFLINE_ADMIN_ID = '00000000-0000-0000-0000-000000000001'
@@ -35,23 +36,31 @@ export function isOfflineAdminCredential(identifier: string, password: string): 
   return identifier.trim().toLowerCase() === 'admin' && password === 'admin'
 }
 
-/** Retorna o usuário da sessão ativa, ou null se não autenticado */
-export async function resolveAuthenticatedUser(): Promise<User | null> {
-  const session = getStoredSession()
-  if (!session) return null
-
-  const verified = await verifyToken(session.token)
-  if (!verified) {
-    clearSession()
-    return null
-  }
+async function resolveUserFromToken(token: string): Promise<User | null> {
+  const verified = await verifyToken(token)
+  if (!verified) return null
 
   if (verified.userId === OFFLINE_ADMIN_ID) {
     return buildOfflineAdminUser()
   }
 
   const user = await findUserById(verified.userId)
-  if (!user || !user.active) {
+  if (!user || !user.active) return null
+  return user
+}
+
+/** Retorna o usuário da sessão ativa, ou null se não autenticado */
+export async function resolveAuthenticatedUser(): Promise<User | null> {
+  const requestToken = getRequestAuthToken()
+  if (requestToken) {
+    return resolveUserFromToken(requestToken)
+  }
+
+  const session = getStoredSession()
+  if (!session) return null
+
+  const user = await resolveUserFromToken(session.token)
+  if (!user) {
     clearSession()
     return null
   }

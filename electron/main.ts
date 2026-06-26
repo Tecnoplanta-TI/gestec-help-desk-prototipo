@@ -13,20 +13,16 @@
  * - sandbox: true           → processo renderer isolado
  */
 
-import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
+import { app, BrowserWindow, nativeTheme } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { registerAuthHandlers } from './ipc/auth-ipc'
-import { registerTicketHandlers } from './ipc/ticket-ipc'
-import { registerSlaHandlers } from './ipc/sla-ipc'
-import { registerWorkflowHandlers } from './ipc/workflow-ipc'
-import { registerTimerHandlers } from './ipc/timer-ipc'
-import { registerDiscordHandlers } from './ipc/discord-ipc'
-import { registerProjectHandlers } from './ipc/project-ipc'
-import { registerZeevHandlers } from './ipc/zeev-ipc'
-import { ensureZeevDefaultWorkflow } from './services/zeev-workflow-seed'
+import { installIpcRpcBridge } from './ipc/rpc-bridge'
+import { rpcHandle } from './ipc/rpc-handle'
+import { bootstrapBackend } from './api/bootstrap'
 import { startApiServer, stopApiServer } from './api/server'
 import { ensureOfflineAdminSession } from './services/session-user'
+
+installIpcRpcBridge()
 
 let mainWindow: BrowserWindow | null = null
 let floatingWindow: BrowserWindow | null = null
@@ -111,19 +107,7 @@ app.whenReady().then(async () => {
     await ensureOfflineAdminSession()
   }
 
-  // Registrar todos os handlers IPC por domínio
-  registerAuthHandlers()
-  registerTicketHandlers()
-  registerSlaHandlers()
-  registerWorkflowHandlers()
-  registerTimerHandlers()
-  registerDiscordHandlers()
-  registerProjectHandlers()
-  registerZeevHandlers()
-
-  await ensureZeevDefaultWorkflow().catch((error) => {
-    console.error('[zeev] falha ao garantir workflow padrão:', error)
-  })
+  await bootstrapBackend()
 
   startApiServer().catch((error) => {
     console.error('[API] erro ao iniciar servidor interno:', error)
@@ -155,7 +139,7 @@ app.on('before-quit', () => {
 // ─── IPC: Janela flutuante ────────────────────────────────────────────────────
 
 /** Abre a janela flutuante de cronômetros */
-ipcMain.handle('floating-window:open', () => {
+rpcHandle('floating-window:open', () => {
   if (!floatingWindow || floatingWindow.isDestroyed()) {
     createFloatingWindow()
   }
@@ -163,12 +147,12 @@ ipcMain.handle('floating-window:open', () => {
 })
 
 /** Fecha a janela flutuante */
-ipcMain.handle('floating-window:close', () => {
+rpcHandle('floating-window:close', () => {
   floatingWindow?.hide()
 })
 
 /** Alterna pin (always-on-top) da janela flutuante */
-ipcMain.handle('floating-window:toggle-pin', (_event, pinned: boolean) => {
+rpcHandle('floating-window:toggle-pin', (_event, pinned: boolean) => {
   floatingWindow?.setAlwaysOnTop(pinned)
   return pinned
 })

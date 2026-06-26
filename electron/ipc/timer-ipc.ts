@@ -1,7 +1,8 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { rpcHandle } from './rpc-handle'
 import { z } from 'zod'
 import type { ActiveTimer, Appointment } from '../../shared/types'
 import { getStoredSession } from '../services/auth'
+import { isElectronRuntime } from '../lib/runtime'
 import { resolveAuthenticatedUser } from '../services/session-user'
 import {
   getCurrentTimersSnapshot,
@@ -56,6 +57,10 @@ async function requireAuthenticatedUser() {
 }
 
 function broadcastTimers(timers: ActiveTimer[]): void {
+  if (!isElectronRuntime()) return
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { BrowserWindow } = require('electron') as typeof import('electron')
   for (const window of BrowserWindow.getAllWindows()) {
     if (!window.isDestroyed()) {
       window.webContents.send('timer:tick', timers)
@@ -87,7 +92,7 @@ function ensureTickLoopStarted(): void {
 export function registerTimerHandlers(): void {
   ensureTickLoopStarted()
 
-  ipcMain.handle('timer:start', async (_event, entityId: string, entityType: ActiveTimer['entityType'], entityTitle: string) => {
+  rpcHandle('timer:start', async (_event, entityId: string, entityType: ActiveTimer['entityType'], entityTitle: string) => {
     const user = await requireAuthenticatedUser()
     const parsed = StartTimerSchema.safeParse({ entityId, entityType, entityTitle })
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -110,7 +115,7 @@ export function registerTimerHandlers(): void {
     }
   })
 
-  ipcMain.handle('timer:pause', async (_event, timerId: unknown) => {
+  rpcHandle('timer:pause', async (_event, timerId: unknown) => {
     const user = await requireAuthenticatedUser()
     const parsed = z.string().uuid().safeParse(timerId)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -125,7 +130,7 @@ export function registerTimerHandlers(): void {
     }
   })
 
-  ipcMain.handle('timer:stop', async (_event, timerId: unknown): Promise<Appointment> => {
+  rpcHandle('timer:stop', async (_event, timerId: unknown): Promise<Appointment> => {
     const user = await requireAuthenticatedUser()
     const parsed = z.string().uuid().safeParse(timerId)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -140,7 +145,7 @@ export function registerTimerHandlers(): void {
     }
   })
 
-  ipcMain.handle('timer:get-active', async () => {
+  rpcHandle('timer:get-active', async () => {
     const user = await requireAuthenticatedUser()
     return getCurrentTimersSnapshot(user.id)
   })

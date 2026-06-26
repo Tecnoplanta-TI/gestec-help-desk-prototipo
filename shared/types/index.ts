@@ -56,6 +56,8 @@ export type TicketQueue =
   | 'approvals_app'
   | 'cancellation'
 
+export type TicketListScope = 'mine' | 'participated' | 'accessible'
+
 export type TicketPriority = 'P1' | 'P2' | 'P3' | 'P4'
 
 export type TicketLevel = 'N1' | 'N2' | 'N3'
@@ -109,6 +111,8 @@ export interface User {
 export interface LoginResult {
   user: User
   expiresAt: string // ISO datetime
+  /** JWT retornado no login (modo navegador) */
+  token?: string
 }
 
 export interface CreateUserPayload {
@@ -341,6 +345,8 @@ export interface SubmitTicketEvaluationPayload {
 
 export interface ListTicketsFilterPayload {
   queue?: TicketQueue
+  /** Escopo de visibilidade na listagem geral (estilo Zeev "Acompanhar solicitação"). */
+  scope?: TicketListScope
 }
 
 export interface CreateCostCenterPayload {
@@ -785,6 +791,66 @@ export interface TicketReportStats {
   evaluationCount: number
 }
 
+// ─── Integrações API ───────────────────────────────────────────────────────────
+
+export type ApiIntegrationMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+export type ApiIntegrationKind = 'rest_json' | 'sql' | 'fixed'
+export type ApiIntegrationAuthType = 'none' | 'bearer'
+
+export interface ApiIntegrationKeyValue {
+  key: string
+  value: string
+}
+
+export interface ApiIntegration {
+  id: string
+  name: string
+  kind: ApiIntegrationKind
+  method: ApiIntegrationMethod
+  url: string
+  body?: string
+  authType: ApiIntegrationAuthType
+  authToken?: string
+  parameters: ApiIntegrationKeyValue[]
+  headers: ApiIntegrationKeyValue[]
+  transformFilter?: string
+  transformValue?: string
+  transformText?: string
+  transformSort?: string
+  transformErrorMessage?: string
+  transformFriendlyMessage?: string
+  accessoryFields: ApiIntegrationKeyValue[]
+  locked?: boolean
+  createdById: string
+  createdByName: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateApiIntegrationPayload {
+  name: string
+  kind?: ApiIntegrationKind
+  method: ApiIntegrationMethod
+  url: string
+  body?: string
+  authType?: ApiIntegrationAuthType
+  authToken?: string
+  parameters?: ApiIntegrationKeyValue[]
+  headers?: ApiIntegrationKeyValue[]
+  transformFilter?: string
+  transformValue?: string
+  transformText?: string
+  transformSort?: string
+  transformErrorMessage?: string
+  transformFriendlyMessage?: string
+  accessoryFields?: ApiIntegrationKeyValue[]
+  locked?: boolean
+}
+
+export interface UpdateApiIntegrationPayload extends Partial<CreateApiIntegrationPayload> {
+  id: string
+}
+
 // ─── Notificações Discord ─────────────────────────────────────────────────────
 
 export interface DiscordCondition {
@@ -883,6 +949,12 @@ export interface ElectronAPI {
   createDiscordRule: (payload: CreateDiscordRulePayload) => Promise<DiscordNotificationRule>
   updateDiscordRule: (payload: UpdateDiscordRulePayload) => Promise<DiscordNotificationRule>
   deleteDiscordRule: (ruleId: string) => Promise<void>
+  // Integrações API
+  listApiIntegrations: () => Promise<ApiIntegration[]>
+  getApiIntegrationById: (integrationId: string) => Promise<ApiIntegration>
+  createApiIntegration: (payload: CreateApiIntegrationPayload) => Promise<ApiIntegration>
+  updateApiIntegration: (payload: UpdateApiIntegrationPayload) => Promise<ApiIntegration>
+  deleteApiIntegration: (integrationId: string) => Promise<void>
   // Projects
   listProjects: () => Promise<Project[]>
   getProjectById: (projectId: string) => Promise<Project>

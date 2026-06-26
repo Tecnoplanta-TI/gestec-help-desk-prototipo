@@ -29,6 +29,7 @@ import type {
   AddTicketCommentPayload,
   AppConfig,
   AuditLog,
+  CreateApiIntegrationPayload,
   CompleteTicketServicePayload,
   CreateCostCenterPayload,
   CreateTicketAppointmentPayload,
@@ -63,6 +64,7 @@ import type {
   UpdateProjectTaskAppointmentPayload,
   UpdateProjectTaskPayload,
   UpdateDiscordRulePayload,
+  UpdateApiIntegrationPayload,
   UpdateSlaRulePayload,
   UpdateTicketPayload,
   UpdateServiceTicketPayload,
@@ -328,6 +330,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   deleteDiscordRule: (ruleId: string) =>
     ipcRenderer.invoke('discord:delete-rule', ruleId),
+
+  listApiIntegrations: () => ipcRenderer.invoke('integration:list'),
+
+  getApiIntegrationById: (integrationId: string) =>
+    ipcRenderer.invoke('integration:get-by-id', integrationId),
+
+  createApiIntegration: (payload: CreateApiIntegrationPayload) =>
+    ipcRenderer.invoke('integration:create', payload),
+
+  updateApiIntegration: (payload: UpdateApiIntegrationPayload) =>
+    ipcRenderer.invoke('integration:update', payload),
+
+  deleteApiIntegration: (integrationId: string) =>
+    ipcRenderer.invoke('integration:delete', integrationId),
 
   // ── Projetos ───────────────────────────────────────────────────────────────
   listProjects: (): Promise<Project[]> =>

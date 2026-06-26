@@ -1,28 +1,29 @@
 /**
  * src/lib/ipc.ts
  *
- * Wrapper tipado para `window.electronAPI`.
- * Use sempre esta exportação nos componentes e hooks do Renderer —
- * nunca acesse `window.electronAPI` diretamente.
- *
- * Motivo: centraliza o ponto de acesso, facilita mocking em testes
- * e fornece mensagem de erro clara caso o preload não tenha sido carregado.
+ * Wrapper tipado para comunicação com o backend.
+ * No Electron usa window.electronAPI (preload); no navegador usa HTTP RPC.
  */
 
 import type { ElectronAPI } from '../../shared/types'
+import { browserAPI } from './browser-api'
+import { isElectron } from './platform'
 
-function getElectronAPI(): ElectronAPI {
-  if (typeof window === 'undefined' || !window.electronAPI) {
-    throw new Error(
-      '[ipc] window.electronAPI não está disponível. ' +
-        'Verifique se o preload script foi carregado corretamente.',
-    )
+function getAPI(): ElectronAPI {
+  if (isElectron()) {
+    if (!window.electronAPI) {
+      throw new Error(
+        '[ipc] window.electronAPI não está disponível. ' +
+          'Verifique se o preload script foi carregado corretamente.',
+      )
+    }
+    return window.electronAPI
   }
-  return window.electronAPI
+  return browserAPI
 }
 
 export const ipc: ElectronAPI = new Proxy({} as ElectronAPI, {
   get(_target, prop: string) {
-    return getElectronAPI()[prop as keyof ElectronAPI]
+    return getAPI()[prop as keyof ElectronAPI]
   },
 })

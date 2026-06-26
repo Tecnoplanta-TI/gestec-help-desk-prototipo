@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { rpcHandle } from './rpc-handle'
 import { z } from 'zod'
 import {
   createDiscordRule,
@@ -57,12 +57,12 @@ function mapServiceError(error: unknown): never {
 }
 
 export function registerDiscordHandlers(): void {
-  ipcMain.handle('discord:list-rules', async () => {
+  rpcHandle('discord:list-rules', async () => {
     await requireAuthenticatedUser()
     return listDiscordRules()
   })
 
-  ipcMain.handle('discord:create-rule', async (_event, payload: unknown) => {
+  rpcHandle('discord:create-rule', async (_event, payload: unknown) => {
     await requireAdminUser()
     const parsed = CreateDiscordRuleSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -74,7 +74,7 @@ export function registerDiscordHandlers(): void {
     }
   })
 
-  ipcMain.handle('discord:update-rule', async (_event, payload: unknown) => {
+  rpcHandle('discord:update-rule', async (_event, payload: unknown) => {
     await requireAdminUser()
     const parsed = UpdateDiscordRuleSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -86,7 +86,7 @@ export function registerDiscordHandlers(): void {
     }
   })
 
-  ipcMain.handle('discord:delete-rule', async (_event, ruleId: unknown) => {
+  rpcHandle('discord:delete-rule', async (_event, ruleId: unknown) => {
     await requireAdminUser()
     const parsed = z.string().uuid().safeParse(ruleId)
     if (!parsed.success) ipcError('INVALID_INPUT')

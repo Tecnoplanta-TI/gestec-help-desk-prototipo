@@ -13,6 +13,7 @@ import * as bcrypt from 'bcryptjs'
 import { SignJWT, jwtVerify } from 'jose'
 import Store from 'electron-store'
 import type { User, LoginResult } from '../../shared/types'
+import { createAppStore } from '../lib/store'
 
 // ─── electron-store schema ────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ interface AuthStoreSchema {
   } | null
 }
 
-const store = new Store<AuthStoreSchema>({
+const store = createAppStore<AuthStoreSchema>({
   name: 'auth',
   encryptionKey: 'gestec-auth-store-key', // chave de ofuscação (não substitui TLS)
 })
@@ -80,6 +81,18 @@ export async function verifyToken(token: string): Promise<{ userId: string } | n
     const secret = getJwtSecret()
     const { payload } = await jwtVerify(token, secret)
     return { userId: payload.sub as string }
+  } catch {
+    return null
+  }
+}
+
+/** Extrai data de expiração ISO de um JWT válido */
+export async function getTokenExpiresAt(token: string): Promise<string | null> {
+  try {
+    const secret = getJwtSecret()
+    const { payload } = await jwtVerify(token, secret)
+    if (typeof payload.exp !== 'number') return null
+    return new Date(payload.exp * 1000).toISOString()
   } catch {
     return null
   }

@@ -1,6 +1,10 @@
 import { randomUUID } from 'crypto'
 import { addDays } from 'date-fns'
 import { hasPermission } from '../../shared/lib/permissions'
+import {
+  filterTicketsByScope,
+  type TicketListScope,
+} from '../../shared/lib/ticket-access'
 import { ZEEV_STEPS } from '../../shared/lib/zeev-steps'
 import type {
   AddTicketCommentPayload,
@@ -335,14 +339,11 @@ export async function completeTicketService(
   const existing = await readTicket(payload.ticketId)
   if (existing.status !== ZEEV_STEPS.in_service) throw new Error('INVALID_STATUS')
   if (!canAccessServiceTicket(existing, user)) throw new Error('FORBIDDEN')
-
-  if (!payload.resolutionSummary?.trim()) throw new Error('RESOLUTION_REQUIRED')
   if (!existing.serviceDueDate) throw new Error('SERVICE_DUE_DATE_REQUIRED')
 
   const now = new Date().toISOString()
   const updated = await saveTicket({
     ...existing,
-    supportNotes: payload.resolutionSummary.trim(),
     ...(payload.deliveredEquipment !== undefined
       ? { deliveredEquipment: payload.deliveredEquipment }
       : {}),
@@ -550,13 +551,6 @@ export async function listTicketsFiltered(
   const all = await listAllTickets()
   const queue = filter?.queue ?? 'all'
 
-  if (queue === 'mine') {
-    return all.filter(
-      (t) =>
-        t.requesterUserId === user.id ||
-        t.requester.email.toLowerCase() === user.email.toLowerCase(),
-    )
-  }
   if (queue === 'triage') {
     return all.filter((t) => t.status === ZEEV_STEPS.in_triage)
   }
@@ -582,11 +576,9 @@ export async function listTicketsFiltered(
     return all.filter((t) => t.status === ZEEV_STEPS.awaiting_cancellation_approval)
   }
 
-  if (hasPermission(user, 'requester') && !hasPermission(user, 'triage') && user.role === 'member') {
-    return all.filter((t) => t.requester.email.toLowerCase() === user.email.toLowerCase())
-  }
+  const scope: TicketListScope = filter?.scope ?? 'mine'
 
-  return all
+  return filterTicketsByScope(all, scope, user)
 }
 
 export async function getTicketReportStats(): Promise<TicketReportStats> {

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { rpcHandle } from './rpc-handle'
 import { z } from 'zod'
 import { resolveAuthenticatedUser } from '../services/session-user'
 import {
@@ -75,12 +75,12 @@ function mapServiceError(error: unknown): never {
 }
 
 export function registerWorkflowHandlers(): void {
-  ipcMain.handle('workflow:list', async () => {
+  rpcHandle('workflow:list', async () => {
     await requireAuthenticatedUser()
     return listWorkflows()
   })
 
-  ipcMain.handle('workflow:create', async (_event, payload: unknown) => {
+  rpcHandle('workflow:create', async (_event, payload: unknown) => {
     await requireAdminUser()
     const parsed = CreateWorkflowSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -92,7 +92,7 @@ export function registerWorkflowHandlers(): void {
     }
   })
 
-  ipcMain.handle('workflow:update', async (_event, payload: unknown) => {
+  rpcHandle('workflow:update', async (_event, payload: unknown) => {
     await requireAdminUser()
     const parsed = UpdateWorkflowSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -104,7 +104,7 @@ export function registerWorkflowHandlers(): void {
     }
   })
 
-  ipcMain.handle('workflow:delete', async (_event, workflowId: unknown) => {
+  rpcHandle('workflow:delete', async (_event, workflowId: unknown) => {
     await requireAdminUser()
     const parsed = z.string().uuid().safeParse(workflowId)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -116,7 +116,7 @@ export function registerWorkflowHandlers(): void {
     }
   })
 
-  ipcMain.handle('workflow:set-default', async (_event, workflowId: unknown) => {
+  rpcHandle('workflow:set-default', async (_event, workflowId: unknown) => {
     await requireAdminUser()
     const parsed = z.string().uuid().safeParse(workflowId)
     if (!parsed.success) ipcError('INVALID_INPUT')

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Clock, MessageSquare, Package, Play, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock, MessageSquare, Package, Play, Trash2 } from 'lucide-react'
 import type {
   Appointment,
   CostCenter,
@@ -92,7 +92,6 @@ export default function ServiceDetailPage(): JSX.Element {
   const [serviceGroup, setServiceGroup] = useState<ServiceGroup>('access_accounts')
   const [serviceDueDate, setServiceDueDate] = useState('')
   const [additionalAssigneeId, setAdditionalAssigneeId] = useState('')
-  const [resolutionSummary, setResolutionSummary] = useState('')
   const [equipment, setEquipment] = useState<DeliveredEquipmentItem[]>([])
   const [message, setMessage] = useState('')
 
@@ -128,6 +127,14 @@ export default function ServiceDetailPage(): JSX.Element {
     [ticket],
   )
 
+  const completionBlockers = useMemo(() => {
+    const items: string[] = []
+    if (!serviceDueDate) items.push('Informe o prazo do atendimento (seção Responsável)')
+    return items
+  }, [serviceDueDate])
+
+  const canComplete = completionBlockers.length === 0
+
   const load = useCallback(async () => {
     if (!id) return
     setLoading(true)
@@ -147,7 +154,6 @@ export default function ServiceDetailPage(): JSX.Element {
       setServiceGroup(ticketData.serviceGroup)
       setServiceDueDate(ticketData.serviceDueDate ?? '')
       setAdditionalAssigneeId(ticketData.additionalAssigneeId ?? '')
-      setResolutionSummary(ticketData.supportNotes ?? '')
       setEquipment(ticketData.deliveredEquipment ?? [])
       setApptTechnicianId(ticketData.assigneeId ?? '')
       setCreateZeevUser(ticketData.createZeevUser ?? false)
@@ -178,7 +184,6 @@ export default function ServiceDetailPage(): JSX.Element {
         serviceGroup,
         serviceDueDate: serviceDueDate || undefined,
         additionalAssigneeId: additionalAssigneeId || null,
-        supportNotes: resolutionSummary,
         deliveredEquipment: equipment,
         createZeevUser,
         createEmail,
@@ -269,14 +274,6 @@ export default function ServiceDetailPage(): JSX.Element {
 
   async function handleComplete(): Promise<void> {
     if (!ticket) return
-    if (!resolutionSummary.trim()) {
-      toast({
-        variant: 'destructive',
-        title: 'Descrição obrigatória',
-        description: 'Descreva o que foi realizado para validação do solicitante.',
-      })
-      return
-    }
     if (!serviceDueDate) {
       toast({
         variant: 'destructive',
@@ -293,7 +290,7 @@ export default function ServiceDetailPage(): JSX.Element {
         priority,
         level,
         serviceGroup,
-        serviceDueDate,
+        serviceDueDate: serviceDueDate || undefined,
         additionalAssigneeId: additionalAssigneeId || null,
         deliveredEquipment: equipment,
         createZeevUser,
@@ -305,7 +302,6 @@ export default function ServiceDetailPage(): JSX.Element {
       })
       await ipc.completeTicketService({
         ticketId: ticket.id,
-        resolutionSummary: resolutionSummary.trim(),
         deliveredEquipment: equipment,
       })
       toast({ title: 'Enviado para aprovação de conclusão' })
@@ -387,23 +383,6 @@ export default function ServiceDetailPage(): JSX.Element {
     } finally {
       setBusy(false)
     }
-  }
-
-  function addEquipmentRow(): void {
-    setEquipment((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), assetId: '', description: '' },
-    ])
-  }
-
-  function updateEquipmentRow(rowId: string, field: 'assetId' | 'description', value: string): void {
-    setEquipment((prev) =>
-      prev.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)),
-    )
-  }
-
-  function removeEquipmentRow(rowId: string): void {
-    setEquipment((prev) => prev.filter((row) => row.id !== rowId))
   }
 
   if (!currentUser || !hasPermission(currentUser, 'agent')) {
@@ -964,84 +943,28 @@ export default function ServiceDetailPage(): JSX.Element {
               </Card>
 
               <Card className="surface-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">O que foi realizado</CardTitle>
-                  <CardDescription>
-                    Descreva de forma clara para validação do solicitante.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    rows={4}
-                    value={resolutionSummary}
-                    onChange={(e) => setResolutionSummary(e.target.value)}
-                    onBlur={() => void persistServiceFields()}
-                    placeholder="Descreva o que foi realizado de forma clara, para validação do solicitante."
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="surface-card">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Package className="h-4 w-4 text-muted-foreground" />
                     Equipamentos entregues
                   </CardTitle>
-                  <Button type="button" variant="outline" size="sm" onClick={addEquipmentRow}>
-                    <Plus className="mr-1 h-4 w-4" />
-                    Inserir
+                  <Button type="button" variant="outline" size="sm" asChild>
+                    <Link to={`/service/${ticket.id}/equipment`}>
+                      Gerenciar
+                    </Link>
                   </Button>
                 </CardHeader>
                 <CardContent>
                   {equipment.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nenhum equipamento registrado.</p>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-10" />
-                          <TableHead>ID Patrimonial</TableHead>
-                          <TableHead>Descrição</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {equipment.map((row) => (
-                          <TableRow key={row.id}>
-                            <TableCell>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => removeEquipmentRow(row.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={row.assetId}
-                                onChange={(e) =>
-                                  updateEquipmentRow(row.id, 'assetId', e.target.value)
-                                }
-                                onBlur={() => void persistServiceFields()}
-                                placeholder="Código patrimonial"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={row.description}
-                                onChange={(e) =>
-                                  updateEquipmentRow(row.id, 'description', e.target.value)
-                                }
-                                onBlur={() => void persistServiceFields()}
-                                placeholder="Descrição do equipamento"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                    <p className="text-sm text-muted-foreground">
+                      {equipment.length} {equipment.length === 1 ? 'item registrado' : 'itens registrados'}.
+                      {' '}
+                      <Link to={`/service/${ticket.id}/equipment`} className="text-primary hover:underline">
+                        Ver tela completa
+                      </Link>
+                    </p>
                   )}
                 </CardContent>
               </Card>
@@ -1129,14 +1052,26 @@ export default function ServiceDetailPage(): JSX.Element {
                 </Button>
               )}
               {isInService && (
-                <Button
-                  className="w-full"
-                  disabled={busy || !resolutionSummary.trim()}
-                  onClick={() => void handleComplete()}
-                >
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Enviar para aprovação
-                </Button>
+                <>
+                  {completionBlockers.length > 0 ? (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
+                      <p className="font-medium">Para enviar à aprovação, preencha:</p>
+                      <ul className="mt-1 list-inside list-disc space-y-0.5 text-muted-foreground">
+                        {completionBlockers.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  <Button
+                    className="w-full"
+                    disabled={busy || !canComplete}
+                    onClick={() => void handleComplete()}
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Enviar para aprovação
+                  </Button>
+                </>
               )}
               <Button variant="outline" className="w-full" asChild>
                 <Link to={`/tickets/${ticket.id}`}>Ver detalhe completo</Link>

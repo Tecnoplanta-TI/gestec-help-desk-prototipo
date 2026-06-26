@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { rpcHandle } from './rpc-handle'
 import { z } from 'zod'
 import { resolveAuthenticatedUser } from '../services/session-user'
 import { sanitizeCreateTicketPayload } from '../../shared/lib/ticket-payload'
@@ -147,12 +147,12 @@ function mapTicketServiceError(error: unknown): never {
 }
 
 export function registerTicketHandlers(): void {
-  ipcMain.handle('ticket:list', async () => {
+  rpcHandle('ticket:list', async () => {
     await requireAuthenticatedUser()
     return listTickets()
   })
 
-  ipcMain.handle('ticket:get-by-id', async (_event, ticketId: string) => {
+  rpcHandle('ticket:get-by-id', async (_event, ticketId: string) => {
     await requireAuthenticatedUser()
     if (!z.string().uuid().safeParse(ticketId).success) ipcError('INVALID_INPUT')
     const ticket = await getTicketById(ticketId)
@@ -160,7 +160,7 @@ export function registerTicketHandlers(): void {
     return ticket
   })
 
-  ipcMain.handle('ticket:create', async (_event, payload: unknown) => {
+  rpcHandle('ticket:create', async (_event, payload: unknown) => {
     const user = await requireAuthenticatedUser()
     const sanitized =
       payload && typeof payload === 'object'
@@ -188,7 +188,7 @@ export function registerTicketHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:transition-step', async (_event, payload: unknown) => {
+  rpcHandle('ticket:transition-step', async (_event, payload: unknown) => {
     const user = await requireAuthenticatedUser()
 
     const parsed = z
@@ -212,7 +212,7 @@ export function registerTicketHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:create-expense', async (_event, payload: unknown) => {
+  rpcHandle('ticket:create-expense', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = CreateTicketExpenseSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -224,7 +224,7 @@ export function registerTicketHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:update-expense', async (_event, payload: unknown) => {
+  rpcHandle('ticket:update-expense', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = UpdateTicketExpenseSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -236,7 +236,7 @@ export function registerTicketHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:delete-expense', async (_event, payload: unknown) => {
+  rpcHandle('ticket:delete-expense', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = DeleteTicketExpenseSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -248,7 +248,7 @@ export function registerTicketHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:upload-expense-attachment', async (_event, payload: unknown) => {
+  rpcHandle('ticket:upload-expense-attachment', async (_event, payload: unknown) => {
     const user = await requireAuthenticatedUser()
     const parsed = UploadTicketExpenseAttachmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -263,7 +263,7 @@ export function registerTicketHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:delete-expense-attachment', async (_event, payload: unknown) => {
+  rpcHandle('ticket:delete-expense-attachment', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = DeleteTicketExpenseAttachmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -275,7 +275,7 @@ export function registerTicketHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:list-attachments', async (_event, ticketId: unknown) => {
+  rpcHandle('ticket:list-attachments', async (_event, ticketId: unknown) => {
     await requireAuthenticatedUser()
     const parsed = z.string().uuid().safeParse(ticketId)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -287,7 +287,7 @@ export function registerTicketHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:upload-attachment', async (_event, payload: unknown) => {
+  rpcHandle('ticket:upload-attachment', async (_event, payload: unknown) => {
     const user = await requireAuthenticatedUser()
     const parsed = UploadTicketAttachmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -302,7 +302,7 @@ export function registerTicketHandlers(): void {
     }
   })
 
-  ipcMain.handle('ticket:delete-attachment', async (_event, payload: unknown) => {
+  rpcHandle('ticket:delete-attachment', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = DeleteTicketAttachmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -314,7 +314,7 @@ export function registerTicketHandlers(): void {
     }
   })
 
-  ipcMain.handle('attachment:get-download-url', async (_event, payload: unknown) => {
+  rpcHandle('attachment:get-download-url', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = z.object({ blobKey: z.string().min(1) }).safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')

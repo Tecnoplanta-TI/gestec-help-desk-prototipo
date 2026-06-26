@@ -8,15 +8,19 @@
  */
 
 import { CosmosClient, Database } from '@azure/cosmos'
-import Store from 'electron-store'
+import { createAppStore } from '../lib/store'
 
 interface StoreSchema {
   cosmosConnectionString?: string
 }
 
-const store = new Store<StoreSchema>()
+const store = createAppStore<StoreSchema>()
 
 let _db: Database | null = null
+
+export function isCosmosConfigured(): boolean {
+  return Boolean(store.get('cosmosConnectionString') ?? process.env['COSMOS_CONNECTION_STRING'])
+}
 
 /**
  * Retorna a instância do banco de dados Cosmos DB.
@@ -38,7 +42,8 @@ export function getDatabase(): Database {
   }
 
   const client = new CosmosClient(connectionString)
-  _db = client.database('gestec_helpDesk')
+  const databaseId = process.env['COSMOS_DATABASE_ID'] ?? 'gestec_helpDesk'
+  _db = client.database(databaseId)
   return _db
 }
 

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { rpcHandle } from './rpc-handle'
 import { z } from 'zod'
 import { resolveAuthenticatedUser } from '../services/session-user'
 import {
@@ -191,12 +191,12 @@ async function assertProjectTaskAccess(
 }
 
 export function registerProjectHandlers(): void {
-  ipcMain.handle('project:list', async () => {
+  rpcHandle('project:list', async () => {
     await requireAuthenticatedUser()
     return listProjects()
   })
 
-  ipcMain.handle('project:get-by-id', async (_event, projectId: unknown) => {
+  rpcHandle('project:get-by-id', async (_event, projectId: unknown) => {
     await requireAuthenticatedUser()
     const parsed = z.string().uuid().safeParse(projectId)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -205,14 +205,14 @@ export function registerProjectHandlers(): void {
     return project
   })
 
-  ipcMain.handle('project:create', async (_event, payload: unknown) => {
+  rpcHandle('project:create', async (_event, payload: unknown) => {
     await requireManagerOrAdmin()
     const parsed = CreateProjectSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
     return createProject(parsed.data)
   })
 
-  ipcMain.handle('project:update', async (_event, payload: unknown) => {
+  rpcHandle('project:update', async (_event, payload: unknown) => {
     await requireManagerOrAdmin()
     const parsed = UpdateProjectSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -223,14 +223,14 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:delete', async (_event, projectId: unknown) => {
+  rpcHandle('project:delete', async (_event, projectId: unknown) => {
     await requireManagerOrAdmin()
     const parsed = z.string().uuid().safeParse(projectId)
     if (!parsed.success) ipcError('INVALID_INPUT')
     await deleteProject(parsed.data)
   })
 
-  ipcMain.handle('project:create-task', async (_event, payload: unknown) => {
+  rpcHandle('project:create-task', async (_event, payload: unknown) => {
     await requireManagerOrAdmin()
     const parsed = CreateProjectTaskSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -241,7 +241,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:update-task', async (_event, payload: unknown) => {
+  rpcHandle('project:update-task', async (_event, payload: unknown) => {
     await requireManagerOrAdmin()
     const parsed = UpdateProjectTaskSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -252,7 +252,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:delete-task', async (_event, payload: unknown) => {
+  rpcHandle('project:delete-task', async (_event, payload: unknown) => {
     await requireManagerOrAdmin()
     const parsed = DeleteProjectTaskSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -263,7 +263,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:create-task-appointment', async (_event, payload: unknown) => {
+  rpcHandle('project:create-task-appointment', async (_event, payload: unknown) => {
     const user = await requireAuthenticatedUser()
     const parsed = CreateProjectTaskAppointmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -277,7 +277,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:update-task-appointment', async (_event, payload: unknown) => {
+  rpcHandle('project:update-task-appointment', async (_event, payload: unknown) => {
     const user = await requireAuthenticatedUser()
     const parsed = UpdateProjectTaskAppointmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -291,7 +291,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:delete-task-appointment', async (_event, payload: unknown) => {
+  rpcHandle('project:delete-task-appointment', async (_event, payload: unknown) => {
     const user = await requireAuthenticatedUser()
     const parsed = DeleteProjectTaskAppointmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -305,7 +305,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:create-expense', async (_event, payload: unknown) => {
+  rpcHandle('project:create-expense', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = CreateProjectExpenseSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -317,7 +317,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:update-expense', async (_event, payload: unknown) => {
+  rpcHandle('project:update-expense', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = UpdateProjectExpenseSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -329,7 +329,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:delete-expense', async (_event, payload: unknown) => {
+  rpcHandle('project:delete-expense', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = DeleteProjectExpenseSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -341,7 +341,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:upload-expense-attachment', async (_event, payload: unknown) => {
+  rpcHandle('project:upload-expense-attachment', async (_event, payload: unknown) => {
     const user = await requireAuthenticatedUser()
     const parsed = UploadProjectExpenseAttachmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -356,7 +356,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:delete-expense-attachment', async (_event, payload: unknown) => {
+  rpcHandle('project:delete-expense-attachment', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = DeleteProjectExpenseAttachmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -368,7 +368,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:list-attachments', async (_event, projectId: unknown) => {
+  rpcHandle('project:list-attachments', async (_event, projectId: unknown) => {
     await requireAuthenticatedUser()
     const parsed = z.string().uuid().safeParse(projectId)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -380,7 +380,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:upload-attachment', async (_event, payload: unknown) => {
+  rpcHandle('project:upload-attachment', async (_event, payload: unknown) => {
     const user = await requireAuthenticatedUser()
     const parsed = UploadProjectAttachmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -395,7 +395,7 @@ export function registerProjectHandlers(): void {
     }
   })
 
-  ipcMain.handle('project:delete-attachment', async (_event, payload: unknown) => {
+  rpcHandle('project:delete-attachment', async (_event, payload: unknown) => {
     await requireAuthenticatedUser()
     const parsed = DeleteProjectAttachmentSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')

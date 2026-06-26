@@ -10,9 +10,9 @@
  * - Token JWT armazenado apenas no Main Process (electron-store)
  */
 
-import { is } from '@electron-toolkit/utils'
-import { ipcMain } from 'electron'
 import { z } from 'zod'
+import { rpcHandle } from './rpc-handle'
+import { isElectronDev } from '../lib/runtime'
 import type { User } from '../../shared/types'
 import {
   hashPassword,
@@ -21,7 +21,9 @@ import {
   saveSession,
   clearSession,
   getStoredSession,
+  getTokenExpiresAt,
 } from '../services/auth'
+import { getRequestAuthToken } from '../services/request-context'
 import {
   findUserByEmail,
   listUsers,
@@ -136,7 +138,7 @@ async function requireAdmin(): Promise<User> {
 export function registerAuthHandlers(): void {
 
   // ── auth:login ──────────────────────────────────────────────────────────────
-  ipcMain.handle('auth:login', async (_event, email: string, password: string) => {
+  rpcHandle('auth:login', async (_event, email: string, password: string) => {
     const parsed = LoginSchema.safeParse({ email, password })
     if (!parsed.success) ipcError('INVALID_INPUT')
 
@@ -152,7 +154,13 @@ export function registerAuthHandlers(): void {
         const { token, expiresAt } = await signToken(offlineAdmin)
         saveSession(token, offlineAdmin.id, expiresAt)
         clearLoginAttempts(normalizedEmail)
-        return { user: offlineAdmin, expiresAt } satisfies LoginResult
+        return { user: offlineAdmin, expiresAt, token } satisfies LoginResult
+      }
+      if (isCosmosUnavailableError(error)) {
+        ipcError(
+          'DATABASE_UNAVAILABLE',
+          'Banco de dados não configurado no servidor. Reinicie a API com COSMOS_CONNECTION_STRING.',
+        )
       }
       throw error
     }
@@ -163,7 +171,7 @@ export function registerAuthHandlers(): void {
         const { token, expiresAt } = await signToken(offlineAdmin)
         saveSession(token, offlineAdmin.id, expiresAt)
         clearLoginAttempts(normalizedEmail)
-        return { user: offlineAdmin, expiresAt } satisfies LoginResult
+        return { user: offlineAdmin, expiresAt, token } satisfies LoginResult
       }
       registerLoginFailure(normalizedEmail)
       ipcError('INVALID_CREDENTIALS')
@@ -187,18 +195,27 @@ export function registerAuthHandlers(): void {
     // Nunca retornar passwordHash
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _h, ...user } = userDoc
-    return { user, expiresAt } satisfies LoginResult
+    return { user, expiresAt, token } satisfies LoginResult
   })
 
   // ── auth:logout ─────────────────────────────────────────────────────────────
-  ipcMain.handle('auth:logout', async () => {
+  rpcHandle('auth:logout', async () => {
     clearSession()
   })
 
   // ── auth:get-session ────────────────────────────────────────────────────────
-  ipcMain.handle('auth:get-session', async (): Promise<LoginResult | null> => {
-    if (is.dev) {
+  rpcHandle('auth:get-session', async (): Promise<LoginResult | null> => {
+    const requestToken = getRequestAuthToken()
+
+    if (!requestToken && isElectronDev()) {
       await ensureOfflineAdminSession()
+    }
+
+    if (requestToken) {
+      const user = await resolveAuthenticatedUser()
+      if (!user) return null
+      const expiresAt = (await getTokenExpiresAt(requestToken)) ?? new Date().toISOString()
+      return { user, expiresAt, token: requestToken }
     }
 
     const session = getStoredSession()
@@ -207,17 +224,17 @@ export function registerAuthHandlers(): void {
     const user = await resolveAuthenticatedUser()
     if (!user) return null
 
-    return { user, expiresAt: session.expiresAt }
+    return { user, expiresAt: session.expiresAt, token: session.token }
   })
 
   // ── auth:list-users ─────────────────────────────────────────────────────────
-  ipcMain.handle('auth:list-users', async () => {
+  rpcHandle('auth:list-users', async () => {
     await requireAdmin()
     return listUsers()
   })
 
   // ── auth:create-user ────────────────────────────────────────────────────────
-  ipcMain.handle('auth:create-user', async (_event, payload: unknown) => {
+  rpcHandle('auth:create-user', async (_event, payload: unknown) => {
     await requireAdmin()
     const parsed = CreateUserSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -230,7 +247,7 @@ export function registerAuthHandlers(): void {
   })
 
   // ── auth:update-user ────────────────────────────────────────────────────────
-  ipcMain.handle('auth:update-user', async (_event, payload: unknown) => {
+  rpcHandle('auth:update-user', async (_event, payload: unknown) => {
     await requireAdmin()
     const parsed = UpdateUserSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -245,7 +262,7 @@ export function registerAuthHandlers(): void {
   })
 
   // ── auth:reset-password ─────────────────────────────────────────────────────
-  ipcMain.handle('auth:reset-password', async (_event, payload: unknown) => {
+  rpcHandle('auth:reset-password', async (_event, payload: unknown) => {
     await requireAdmin()
     const parsed = ResetPasswordSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
@@ -255,7 +272,7 @@ export function registerAuthHandlers(): void {
   })
 
   // ── auth:toggle-user-active ─────────────────────────────────────────────────
-  ipcMain.handle('auth:toggle-user-active', async (_event, payload: unknown) => {
+  rpcHandle('auth:toggle-user-active', async (_event, payload: unknown) => {
     const currentUser = await requireAdmin()
     const parsed = ToggleActiveSchema.safeParse(payload)
     if (!parsed.success) ipcError('INVALID_INPUT')
