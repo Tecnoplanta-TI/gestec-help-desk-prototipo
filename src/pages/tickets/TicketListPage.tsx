@@ -1,14 +1,16 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { Plus, Ticket as TicketIcon } from 'lucide-react'
 import type { CreateTicketPayload, Ticket, TicketPriority, TicketListScope, Workflow } from '../../../shared/types'
 import { TICKET_LIST_SCOPE_LABELS } from '../../../shared/lib/ticket-access'
 import { WORKFLOW_STEP_LABELS } from '../../../shared/lib/workflow-steps'
+import { getTicketDisplayId } from '../../../shared/lib/ticket-public-id'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { useAuthStore } from '@/stores/authStore'
 import { sanitizeCreateTicketPayload } from '../../../shared/lib/ticket-payload'
 import { DynamicTicketForm } from '@/components/tickets/DynamicTicketForm'
+import { TicketActionDialog } from '@/components/tickets/TicketActionDialog'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusAlert } from '@/components/shared/StatusAlert'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -51,7 +53,7 @@ const PRIORITY_VARIANT: Record<TicketPriority, 'destructive' | 'default' | 'seco
   P4: 'outline',
 }
 
-const SCOPES: TicketListScope[] = ['mine', 'participated', 'accessible']
+const SCOPES: TicketListScope[] = ['accessible', 'mine', 'participated']
 
 function getErrorMessage(error: unknown): string {
   return getIpcErrorMessage(error, {
@@ -59,8 +61,17 @@ function getErrorMessage(error: unknown): string {
   })
 }
 
-function resolveInitialScope(pathname: string): TicketListScope {
-  return pathname.startsWith('/tickets/mine') ? 'mine' : 'mine'
+function isTrackingRoute(pathname: string): boolean {
+  return pathname.startsWith('/tickets/mine')
+}
+
+function getStepDisplayLabel(workflows: Workflow[], stepId: string): string {
+  if (WORKFLOW_STEP_LABELS[stepId]) return WORKFLOW_STEP_LABELS[stepId]
+  for (const workflow of workflows) {
+    const step = workflow.steps.find((item) => item.id === stepId)
+    if (step) return step.name
+  }
+  return stepId
 }
 
 export default function TicketListPage(): JSX.Element {
@@ -74,38 +85,45 @@ export default function TicketListPage(): JSX.Element {
   const [showForm, setShowForm] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [scope, setScope] = useState<TicketListScope>(() => resolveInitialScope(location.pathname))
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [scope, setScope] = useState<TicketListScope>('accessible')
   const [priorityFilter, setPriorityFilter] = useState<'all' | TicketPriority>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | string>('all')
+  const [search, setSearch] = useState('')
+
+  const trackingMode = isTrackingRoute(location.pathname)
 
   const statuses = useMemo(() => ['all', ...new Set(tickets.map((ticket) => ticket.status))], [tickets])
 
   const stepLabelById = useMemo(() => {
-    const map = new Map<string, string>(Object.entries(WORKFLOW_STEP_LABELS))
-    for (const workflow of workflows) {
-      for (const step of workflow.steps) {
-        map.set(step.id, step.name)
-      }
-    }
-    return map
-  }, [workflows])
+    return new Map(statuses.map((status) => [status, getStepDisplayLabel(workflows, status)]))
+  }, [statuses, workflows])
 
   const filteredTickets = useMemo(
     () =>
       tickets.filter((ticket) => {
         const byPriority = priorityFilter === 'all' || ticket.priority === priorityFilter
         const byStatus = statusFilter === 'all' || ticket.status === statusFilter
-        return byPriority && byStatus
+        const term = search.trim().toLowerCase()
+        const bySearch =
+          !term ||
+          getTicketDisplayId(ticket).toLowerCase().includes(term) ||
+          ticket.title.toLowerCase().includes(term) ||
+          ticket.description.toLowerCase().includes(term) ||
+          ticket.requester.name.toLowerCase().includes(term)
+        return byPriority && byStatus && bySearch
       }),
-    [tickets, priorityFilter, statusFilter],
+    [tickets, priorityFilter, search, statusFilter],
   )
 
-  async function loadTickets(nextScope: TicketListScope): Promise<void> {
+  async function loadTickets(nextScope: TicketListScope, nextTrackingMode = trackingMode): Promise<void> {
     setLoading(true)
     setError(null)
     try {
       const [ticketResult, workflowResult] = await Promise.all([
-        ipc.listTickets({ queue: 'all', scope: nextScope }),
+        nextTrackingMode
+          ? ipc.listTickets({ queue: 'all', scope: nextScope })
+          : ipc.listTickets({ queue: 'mine' }),
         ipc.listWorkflows(),
       ])
       setTickets(ticketResult)
@@ -118,9 +136,13 @@ export default function TicketListPage(): JSX.Element {
   }
 
   useEffect(() => {
-    const nextScope = resolveInitialScope(location.pathname)
+    const nextTrackingMode = isTrackingRoute(location.pathname)
+    const nextScope: TicketListScope = nextTrackingMode ? 'accessible' : 'accessible'
     setScope(nextScope)
-    void loadTickets(nextScope)
+    setPriorityFilter('all')
+    setStatusFilter('all')
+    setSearch('')
+    void loadTickets(nextScope, nextTrackingMode)
   }, [location.pathname])
 
   async function handleScopeChange(nextScope: TicketListScope): Promise<void> {
@@ -142,7 +164,7 @@ export default function TicketListPage(): JSX.Element {
           requesterUserId: payload.requesterUserId ?? currentUser?.id,
         }),
       )
-      setFeedback(`Ticket ${created.ticketNumber ?? created.id.slice(0, 8)} criado com sucesso.`)
+      setFeedback(`Ticket ${getTicketDisplayId(created)} criado com sucesso.`)
       setShowForm(false)
       await loadTickets(scope)
     } catch (err) {
@@ -162,8 +184,12 @@ export default function TicketListPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Acompanhar solicitações"
-        description="Visualize e filtre os chamados conforme sua participação, conforme sua participação."
+        title={trackingMode ? 'Acompanhar solicitações' : 'Tickets'}
+        description={
+          trackingMode
+            ? 'Consulte as solicitações abertas por você, acompanhadas, participadas ou acessíveis ao seu perfil.'
+            : 'Fila de trabalho com os tickets atualmente atribuídos a você.'
+        }
       >
         <Button
           onClick={() => {
@@ -203,6 +229,14 @@ export default function TicketListPage(): JSX.Element {
           </Card>
         </DialogContent>
       </Dialog>
+      <TicketActionDialog
+        open={Boolean(selectedTicketId)}
+        ticketId={selectedTicketId}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setSelectedTicketId(null)
+        }}
+        onChanged={() => loadTickets(scope)}
+      />
 
       {error && !showForm ? <StatusAlert variant="error" message={error} /> : null}
 
@@ -214,23 +248,36 @@ export default function TicketListPage(): JSX.Element {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
+            {trackingMode ? (
+              <div className="space-y-2">
+                <Label htmlFor="ticket-scope">Escopo de consulta</Label>
+                <Select value={scope} onValueChange={(value) => void handleScopeChange(value as TicketListScope)}>
+                  <SelectTrigger id="ticket-scope" className="h-auto min-h-10 whitespace-normal text-left">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SCOPES.map((item, index) => (
+                      <div key={item}>
+                        {index === 1 ? <SelectSeparator /> : null}
+                        <SelectItem value={item} className="whitespace-normal py-2">
+                          {TICKET_LIST_SCOPE_LABELS[item]}
+                        </SelectItem>
+                      </div>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
             <div className="space-y-2">
-              <Label htmlFor="ticket-scope">Acompanhar solicitação</Label>
-              <Select value={scope} onValueChange={(value) => void handleScopeChange(value as TicketListScope)}>
-                <SelectTrigger id="ticket-scope" className="h-auto min-h-10 whitespace-normal text-left">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SCOPES.map((item, index) => (
-                    <div key={item}>
-                      {index === 1 ? <SelectSeparator /> : null}
-                      <SelectItem value={item} className="whitespace-normal py-2">
-                        {TICKET_LIST_SCOPE_LABELS[item]}
-                      </SelectItem>
-                    </div>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="ticket-search">Pesquisar</Label>
+              <input
+                id="ticket-search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="ID, solicitante ou descrição"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              />
             </div>
 
             <div className="space-y-2">
@@ -278,6 +325,7 @@ export default function TicketListPage(): JSX.Element {
               onClick={() => {
                 setPriorityFilter('all')
                 setStatusFilter('all')
+                setSearch('')
               }}
             >
               Limpar filtros
@@ -290,7 +338,9 @@ export default function TicketListPage(): JSX.Element {
             <CardTitle className="text-lg">Lista de tickets</CardTitle>
             <CardDescription>
               {filteredTickets.length} {filteredTickets.length === 1 ? 'chamado' : 'chamados'}{' '}
-              em {TICKET_LIST_SCOPE_LABELS[scope].toLowerCase()}
+              {trackingMode
+                ? `em ${TICKET_LIST_SCOPE_LABELS[scope].toLowerCase()}`
+                : 'na sua fila de trabalho'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -325,19 +375,27 @@ export default function TicketListPage(): JSX.Element {
                       <TableHead className="font-semibold">Prioridade</TableHead>
                       <TableHead className="font-semibold">Status</TableHead>
                       <TableHead className="hidden font-semibold md:table-cell">SLA</TableHead>
-                      <TableHead className="hidden font-semibold lg:table-cell">Origem</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredTickets.map((ticket) => (
-                      <TableRow key={ticket.id} className="transition-colors">
+                      <TableRow
+                        key={ticket.id}
+                        role="button"
+                        tabIndex={0}
+                        className="cursor-pointer transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => setSelectedTicketId(ticket.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            setSelectedTicketId(ticket.id)
+                          }
+                        }}
+                      >
                         <TableCell className="font-mono text-xs">
-                          <Link
-                            className="font-medium text-primary underline-offset-4 hover:underline"
-                            to={`/tickets/${ticket.id}`}
-                          >
-                            {ticket.ticketNumber ?? ticket.id.slice(0, 8)}
-                          </Link>
+                          <span className="font-medium text-primary">
+                            {getTicketDisplayId(ticket)}
+                          </span>
                         </TableCell>
                         <TableCell className="text-sm">{ticket.requester.name}</TableCell>
                         <TableCell className="max-w-[280px] truncate text-sm text-muted-foreground">
@@ -347,13 +405,10 @@ export default function TicketListPage(): JSX.Element {
                           <Badge variant={PRIORITY_VARIANT[ticket.priority]}>{ticket.priority}</Badge>
                         </TableCell>
                         <TableCell className="text-sm">
-                          {stepLabelById.get(ticket.status) ?? ticket.status}
+                          {getStepDisplayLabel(workflows, ticket.status)}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <SlaIndicator status={ticket.sla.status} deadline={ticket.sla.deadline} />
-                        </TableCell>
-                        <TableCell className="hidden capitalize text-muted-foreground lg:table-cell">
-                          {ticket.source}
                         </TableCell>
                       </TableRow>
                     ))}

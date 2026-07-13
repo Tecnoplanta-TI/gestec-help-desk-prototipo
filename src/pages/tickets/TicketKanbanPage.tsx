@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Columns3 } from 'lucide-react'
 import type { Ticket, Workflow } from '../../../shared/types'
+import { WORKFLOW_STEP_LABELS } from '../../../shared/lib/workflow-steps'
+import { getTicketDisplayId } from '../../../shared/lib/ticket-public-id'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { SlaIndicator } from '@/components/tickets/SlaIndicator'
@@ -62,14 +64,14 @@ export default function TicketKanbanPage(): JSX.Element {
     const stepLabelById = new Map<string, string>()
     if (defaultWorkflow) {
       for (const step of defaultWorkflow.steps) {
-        stepLabelById.set(step.id, step.name)
+        stepLabelById.set(step.id, WORKFLOW_STEP_LABELS[step.id] ?? step.name)
       }
     }
 
     const baseColumns = defaultWorkflow
       ? [...defaultWorkflow.steps]
           .sort((a, b) => a.order - b.order)
-          .map((step) => ({ id: step.id, title: step.name }))
+          .map((step) => ({ id: step.id, title: WORKFLOW_STEP_LABELS[step.id] ?? step.name }))
       : []
 
     const existing = new Set(baseColumns.map((column) => column.id))
@@ -125,14 +127,13 @@ export default function TicketKanbanPage(): JSX.Element {
                             className="block rounded-lg border bg-background p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           >
                             <p className="line-clamp-2 text-sm font-medium leading-snug">{ticket.title}</p>
-                            <p className="mt-1 text-xs text-muted-foreground">{ticket.requester.name}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {getTicketDisplayId(ticket)} · {ticket.requester.name}
+                            </p>
                             <div className="mt-2 flex items-center justify-between gap-2">
                               <Badge variant="outline" className="text-[10px]">
                                 {ticket.priority}
                               </Badge>
-                              <span className="truncate text-[10px] capitalize text-muted-foreground">
-                                {ticket.source}
-                              </span>
                             </div>
                             <div className="mt-2">
                               <SlaIndicator

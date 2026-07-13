@@ -2,8 +2,10 @@
 import { Link } from 'react-router-dom'
 import type { ListTicketsFilterPayload, Ticket, TicketQueue } from '../../../shared/types'
 import { WORKFLOW_STEP_LABELS } from '../../../shared/lib/workflow-steps'
+import { getTicketDisplayId } from '../../../shared/lib/ticket-public-id'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
+import { TICKET_TYPE_LABEL } from '@/lib/ticket-labels'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusAlert } from '@/components/shared/StatusAlert'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -84,11 +86,11 @@ export default function TicketQueuePage({
               <TableRow key={t.id}>
                 <TableCell>
                   <Link className="text-primary hover:underline" to={ticketLinkPath(t.id)}>
-                    {t.ticketNumber ?? t.id.slice(0, 8)}
+                    {getTicketDisplayId(t)}
                   </Link>
                 </TableCell>
                 <TableCell>{t.title}</TableCell>
-                <TableCell>{t.type}</TableCell>
+                <TableCell>{TICKET_TYPE_LABEL[t.type]}</TableCell>
                 <TableCell>
                   <Badge>{t.priority}</Badge>
                 </TableCell>

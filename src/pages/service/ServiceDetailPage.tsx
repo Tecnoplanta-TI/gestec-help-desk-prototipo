@@ -14,6 +14,7 @@ import type {
 import { formatDuration } from '../../../shared/lib/time'
 import { WORKFLOW_STEPS } from '../../../shared/lib/workflow-steps'
 import { hasPermission } from '../../../shared/lib/permissions'
+import { getTicketDisplayId } from '../../../shared/lib/ticket-public-id'
 import {
   LEVEL_LABEL,
   PRIORITY_LABEL,
@@ -536,8 +537,8 @@ export default function ServiceDetailPage(): JSX.Element {
       <PageHeader
         title={
           isAwaiting
-            ? `Contato inicial · ${ticket.ticketNumber ?? ticket.id.slice(0, 8)}`
-            : `Atender solicitação · ${ticket.ticketNumber ?? ticket.id.slice(0, 8)}`
+            ? `Contato inicial · ${getTicketDisplayId(ticket)}`
+            : `Atender solicitação · ${getTicketDisplayId(ticket)}`
         }
         description={ticket.title}
       >
@@ -579,7 +580,7 @@ export default function ServiceDetailPage(): JSX.Element {
             </CardHeader>
             <CardContent className="space-y-4">
               <dl>
-                <InfoRow label="Número ticket" value={ticket.ticketNumber ?? '—'} />
+                <InfoRow label="Número ticket" value={getTicketDisplayId(ticket)} />
               </dl>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import type { AttachmentFile, Expense, Ticket, User, Workflow } from '../../../shared/types'
 import { WORKFLOW_STEP_LABELS } from '../../../shared/lib/workflow-steps'
+import { getTicketDisplayId } from '../../../shared/lib/ticket-public-id'
 import { TicketWorkflowActions } from '@/components/tickets/TicketWorkflowActions'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
@@ -52,6 +53,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 function stepLabel(workflow: Workflow | null, stepId: string): string {
+  if (WORKFLOW_STEP_LABELS[stepId]) return WORKFLOW_STEP_LABELS[stepId]
   if (!workflow) return stepId
   const step = workflow.steps.find((item) => item.id === stepId)
   return step ? step.name : stepId
@@ -362,8 +364,7 @@ export default function TicketDetailPage(): JSX.Element {
                 </div>
 
                 <dl className="rounded-lg border bg-muted/20 px-4">
-                  <InfoRow label="ID" value={<span className="font-mono text-xs">{ticket.id}</span>} />
-                  <InfoRow label="Origem" value={<span className="capitalize">{ticket.source}</span>} />
+                  <InfoRow label="ID" value={<span className="font-mono text-xs">{getTicketDisplayId(ticket)}</span>} />
                   <InfoRow label="Status" value={stepLabel(workflow, ticket.status)} />
                   <InfoRow
                     label="SLA"
@@ -619,7 +620,7 @@ export default function TicketDetailPage(): JSX.Element {
                       <SelectContent>
                         {availableSteps.map((step) => (
                           <SelectItem key={step.id} value={step.id}>
-                            {step.name}
+                            {stepLabel(workflow, step.id)}
                           </SelectItem>
                         ))}
                       </SelectContent>

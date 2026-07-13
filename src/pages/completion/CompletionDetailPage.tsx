@@ -5,6 +5,7 @@ import type { Ticket, User } from '../../../shared/types'
 import { formatDuration } from '../../../shared/lib/time'
 import { WORKFLOW_STEPS } from '../../../shared/lib/workflow-steps'
 import { hasPermission } from '../../../shared/lib/permissions'
+import { getTicketDisplayId } from '../../../shared/lib/ticket-public-id'
 import {
   LEVEL_LABEL,
   PRIORITY_LABEL,
@@ -184,7 +185,7 @@ export default function CompletionDetailPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Aprovar conclusão · ${ticket.ticketNumber ?? ticket.id.slice(0, 8)}`}
+        title={`Aprovar conclusão · ${getTicketDisplayId(ticket)}`}
         description={ticket.title}
       >
         <Button variant="outline" size="sm" asChild>
@@ -218,7 +219,7 @@ export default function CompletionDetailPage(): JSX.Element {
             </CardHeader>
             <CardContent>
               <dl>
-                <InfoRow label="Número" value={ticket.ticketNumber ?? '—'} />
+                <InfoRow label="Número" value={getTicketDisplayId(ticket)} />
                 <InfoRow label="Centro de custo" value={ticket.requester.costCenter} />
                 <InfoRow label="Tipo" value={TICKET_TYPE_LABEL[ticket.type]} />
                 <InfoRow label="Prioridade" value={PRIORITY_LABEL[ticket.priority]} />

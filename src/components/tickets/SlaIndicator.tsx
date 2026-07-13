@@ -21,7 +21,8 @@ interface SlaIndicatorProps {
 
 export function SlaIndicator({ status, deadline, compact = false }: SlaIndicatorProps): JSX.Element {
   const containerClass = [
-    'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
+    'inline-flex max-w-full items-center rounded-full border px-2.5 py-1 text-left text-xs font-medium leading-snug',
+    'whitespace-normal break-words',
     STATUS_CLASS[status],
   ].join(' ')
 
@@ -30,8 +31,8 @@ export function SlaIndicator({ status, deadline, compact = false }: SlaIndicator
   }
 
   return (
-    <span className={containerClass} title={`Deadline: ${new Date(deadline).toLocaleString('pt-BR')}`}>
-      {STATUS_LABEL[status]} • {formatSlaRemaining(deadline)}
+    <span className={containerClass} title={`Prazo: ${new Date(deadline).toLocaleString('pt-BR')}`}>
+      {STATUS_LABEL[status]} · {formatSlaRemaining(deadline)}
     </span>
   )
 }

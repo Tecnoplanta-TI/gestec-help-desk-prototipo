@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import type { AppConfig, Ticket } from '../../../shared/types'
 import { WORKFLOW_STEPS } from '../../../shared/lib/workflow-steps'
 import { isTicketRequester } from '../../../shared/lib/ticket-access'
+import { getTicketDisplayId } from '../../../shared/lib/ticket-public-id'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { useAuthStore } from '@/stores/authStore'
@@ -110,7 +111,7 @@ export default function TicketEvaluationPage(): JSX.Element {
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader
         title="Avaliação do serviço"
-        description={`Ticket ${ticket.ticketNumber ?? ticket.id.slice(0, 8)} — ${ticket.title}`}
+        description={`Ticket ${getTicketDisplayId(ticket)} - ${ticket.title}`}
       >
         <Button asChild variant="outline" className="gap-2">
           <Link to={`/tickets/${ticket.id}`}>

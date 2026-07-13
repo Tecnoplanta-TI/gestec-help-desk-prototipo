@@ -96,7 +96,7 @@ function KeyValueEditor({
 export default function ApiIntegrationDetailPage(): JSX.Element {
   const { id } = useParams()
   const navigate = useNavigate()
-  const isNew = id === 'new'
+  const isNew = id === 'new' || !id
 
   const [loading, setLoading] = useState(!isNew)
   const [busy, setBusy] = useState(false)
@@ -104,10 +104,10 @@ export default function ApiIntegrationDetailPage(): JSX.Element {
   const [feedback, setFeedback] = useState<string | null>(null)
   const [tab, setTab] = useState<TabId>('body')
 
-  const [name, setName] = useState('')
+  const [name, setName] = useState(isNew ? 'Nova integração simulada' : '')
   const [kind, setKind] = useState<ApiIntegrationKind>('rest_json')
   const [method, setMethod] = useState<ApiIntegrationMethod>('POST')
-  const [url, setUrl] = useState('')
+  const [url, setUrl] = useState(isNew ? 'https://api.exemplo.local/recurso' : '')
   const [body, setBody] = useState('')
   const [authType, setAuthType] = useState<ApiIntegrationAuthType>('none')
   const [authToken, setAuthToken] = useState('')
@@ -152,10 +152,10 @@ export default function ApiIntegrationDetailPage(): JSX.Element {
 
   function buildPayload() {
     return {
-      name,
+      name: name.trim() || 'Nova integração simulada',
       kind,
       method,
-      url,
+      url: url.trim() || 'https://api.exemplo.local/recurso',
       body,
       authType,
       authToken,

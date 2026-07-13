@@ -24,8 +24,8 @@ export const LEVEL_LABEL: Record<TicketLevel, string> = {
 export const SERVICE_GROUP_LABEL: Record<ServiceGroup, string> = {
   access_accounts: 'Acessos / Contas',
   acquisitions: 'Aquisição / Alocação',
-  dashboards: 'Dashboard',
-  emails: 'Email',
+  dashboards: 'Painéis',
+  emails: 'E-mail',
   gestec: 'Gestec',
   printers: 'Impressoras',
   maintenance_upgrade: 'Manutenção / Upgrade',

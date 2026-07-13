@@ -1,12 +1,13 @@
 import { hasPermission } from './permissions'
+import { WORKFLOW_STEPS } from './workflow-steps'
 import type { Ticket, User } from '../types'
 
 export type TicketListScope = 'mine' | 'participated' | 'accessible'
 
 export const TICKET_LIST_SCOPE_LABELS: Record<TicketListScope, string> = {
-  mine: 'Minhas solicitações',
-  participated: 'Solicitações que participei e tenho acesso',
-  accessible: 'Todas as solicitações que tenho acesso',
+  mine: 'Solicitações abertas por mim',
+  participated: 'Solicitações em que participei',
+  accessible: 'Todas as solicitações que posso consultar',
 }
 
 export function isTicketRequester(ticket: Ticket, user: Pick<User, 'id' | 'email'>): boolean {
@@ -14,28 +15,46 @@ export function isTicketRequester(ticket: Ticket, user: Pick<User, 'id' | 'email
   return ticket.requester.email.toLowerCase() === user.email.toLowerCase()
 }
 
-/** Usuário envolvido no ticket, mas não como solicitante. */
-export function userParticipatedInTicket(ticket: Ticket, user: Pick<User, 'id'>): boolean {
+export function isTicketAssignedToUser(ticket: Ticket, user: Pick<User, 'id'>): boolean {
   const userId = user.id
 
   if (ticket.assigneeId === userId) return true
   if (ticket.additionalAssigneeId === userId) return true
   if (ticket.triageAssigneeId === userId) return true
-  if (ticket.appManagerId === userId) return true
-  if (ticket.cancellationApproverId === userId) return true
-  if (ticket.itManagerDecision?.decidedBy === userId) return true
-  if (ticket.appManagerDecision?.decidedBy === userId) return true
-  if (ticket.cancellationDecision?.decidedBy === userId) return true
-  if (ticket.comments?.some((c) => c.authorId === userId)) return true
-  if (ticket.tasks?.some((t) => t.assigneeId === userId)) return true
-  if (ticket.appointments?.some((a) => a.technicianId === userId)) return true
-  if (ticket.workflowHistory?.some((h) => h.changedBy === userId)) return true
-  if (ticket.attachments?.some((a) => a.uploadedBy === userId)) return true
+  if (
+    ticket.status === WORKFLOW_STEPS.awaiting_app_manager_approval &&
+    ticket.appManagerId === userId
+  ) {
+    return true
+  }
+  if (
+    ticket.status === WORKFLOW_STEPS.awaiting_cancellation_approval &&
+    ticket.cancellationApproverId === userId
+  ) {
+    return true
+  }
+  if (ticket.tasks?.some((task) => task.status !== 'done' && task.assigneeId === userId)) {
+    return true
+  }
 
   return false
 }
 
-/** Tickets visíveis para o usuário no escopo "todas que tenho acesso". */
+export function userParticipatedInTicket(ticket: Ticket, user: Pick<User, 'id'>): boolean {
+  const userId = user.id
+
+  if (isTicketAssignedToUser(ticket, user)) return true
+  if (ticket.itManagerDecision?.decidedBy === userId) return true
+  if (ticket.appManagerDecision?.decidedBy === userId) return true
+  if (ticket.cancellationDecision?.decidedBy === userId) return true
+  if (ticket.comments?.some((comment) => comment.authorId === userId)) return true
+  if (ticket.appointments?.some((appointment) => appointment.technicianId === userId)) return true
+  if (ticket.workflowHistory?.some((entry) => entry.changedBy === userId)) return true
+  if (ticket.attachments?.some((attachment) => attachment.uploadedBy === userId)) return true
+
+  return false
+}
+
 export function userCanAccessTicket(
   ticket: Ticket,
   user: Pick<User, 'id' | 'email' | 'role' | 'permissions'>,
@@ -47,16 +66,21 @@ export function userCanAccessTicket(
   return false
 }
 
+export function filterTicketsForWorkQueue(
+  tickets: Ticket[],
+  user: Pick<User, 'id'>,
+): Ticket[] {
+  return tickets.filter((ticket) => isTicketAssignedToUser(ticket, user))
+}
+
 export function filterTicketsByScope(
   tickets: Ticket[],
   scope: TicketListScope,
   user: Pick<User, 'id' | 'email' | 'role' | 'permissions'>,
 ): Ticket[] {
-  if (scope === 'mine') {
-    return tickets.filter((t) => isTicketRequester(t, user))
-  }
+  if (scope === 'mine') return tickets.filter((ticket) => isTicketRequester(ticket, user))
   if (scope === 'participated') {
-    return tickets.filter((t) => userParticipatedInTicket(t, user))
+    return tickets.filter((ticket) => userParticipatedInTicket(ticket, user))
   }
-  return tickets.filter((t) => userCanAccessTicket(t, user))
+  return tickets.filter((ticket) => userCanAccessTicket(ticket, user))
 }

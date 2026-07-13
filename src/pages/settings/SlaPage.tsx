@@ -42,7 +42,7 @@ const SERVICE_GROUPS: ServiceGroup[] = [
 const SERVICE_GROUP_LABEL: Record<ServiceGroup, string> = {
   access_accounts: 'Acessos e contas',
   acquisitions: 'Aquisições',
-  dashboards: 'Dashboards',
+  dashboards: 'Painéis',
   emails: 'E-mails',
   gestec: 'Gestec',
   printers: 'Impressoras',

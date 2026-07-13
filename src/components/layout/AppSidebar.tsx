@@ -196,7 +196,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }): JSX.Ele
               aria-label={helpDeskOpen ? 'Recolher Gestec Help Desk' : 'Expandir Gestec Help Desk'}
             >
               <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-left">Gestec Help Desk</span>
+              <span className="min-w-0 flex-1 truncate text-left">Help Desk</span>
               {helpDeskOpen ? (
                 <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               ) : (

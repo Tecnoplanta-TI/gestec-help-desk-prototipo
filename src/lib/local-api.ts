@@ -65,6 +65,11 @@ import type {
   User,
   Workflow,
 } from '../../shared/types'
+import { filterTicketsByScope, filterTicketsForWorkQueue } from '../../shared/lib/ticket-access'
+import {
+  getNextPublicTicketId,
+  isPublicTicketId,
+} from '../../shared/lib/ticket-public-id'
 import { calcDeadline, getSlaStatus } from '../../shared/lib/sla'
 import { getInitialStepForType, WORKFLOW_STEPS } from '../../shared/lib/workflow-steps'
 
@@ -82,6 +87,9 @@ const KEYS = {
   session: 'gestec.session',
   timers: 'gestec.timers',
 } as const
+
+const DEMO_SEED_KEY = 'gestec.demoSeeded'
+const DEMO_SEED_VERSION = 'v2'
 
 type StorageKey = (typeof KEYS)[keyof typeof KEYS]
 
@@ -195,6 +203,25 @@ function saveTickets(tickets: Ticket[]): Ticket[] {
   return write(KEYS.tickets, tickets)
 }
 
+function normalizeTicketPublicIds(tickets: Ticket[]): Ticket[] {
+  let changed = false
+  const normalized: Ticket[] = []
+  for (const ticket of tickets) {
+    const alreadyUsed = normalized.some((item) => item.ticketNumber === ticket.ticketNumber)
+    if (isPublicTicketId(ticket.ticketNumber) && !alreadyUsed) {
+      normalized.push(ticket)
+      continue
+    }
+    changed = true
+    normalized.push({
+      ...ticket,
+      ticketNumber: getNextPublicTicketId(normalized),
+    })
+  }
+  if (changed) saveTickets(normalized)
+  return normalized
+}
+
 function saveProjects(projects: Project[]): Project[] {
   return write(KEYS.projects, projects)
 }
@@ -256,10 +283,107 @@ function normalizeWorkflowPayload(
   }
 }
 
+function demoDate(daysOffset: number, hour = 9, minute = 0): string {
+  const date = addDays(new Date(), daysOffset)
+  date.setHours(hour, minute, 0, 0)
+  return date.toISOString()
+}
+
+function demoAppointment(
+  technicianId: string,
+  daysOffset: number,
+  startTime: string,
+  endTime: string,
+  totalMinutes: number,
+  note: string,
+): Appointment {
+  return {
+    id: id(),
+    date: demoDate(daysOffset).slice(0, 10),
+    startTime,
+    endTime,
+    totalMinutes,
+    technicianId,
+    origin: 'manual',
+    note,
+  }
+}
+
+function demoTicket(params: {
+  number: number
+  title: string
+  description: string
+  requesterName: string
+  requesterEmail: string
+  requesterUserId?: string
+  costCenter: string
+  type: Ticket['type']
+  priority: TicketPriority
+  serviceGroup: Ticket['serviceGroup']
+  status: string
+  workflowId: string
+  createdAt: string
+  updatedAt?: string
+  triageAssigneeId?: string
+  assigneeId?: string
+  additionalAssigneeId?: string
+  appManagerId?: string
+  cancellationApproverId?: string
+  cancellationItems?: Ticket['cancellationItems']
+  comments?: Ticket['comments']
+  tasks?: Ticket['tasks']
+  appointments?: Appointment[]
+  workflowHistory?: Ticket['workflowHistory']
+  evaluation?: Ticket['evaluation']
+}): Ticket {
+  const deadline = addDays(new Date(params.createdAt), params.priority === 'P1' ? 1 : params.priority === 'P2' ? 2 : 4).toISOString()
+  return {
+    id: `demo-ticket-${params.number}`,
+    ticketNumber: `#${params.number}`,
+    openedAt: params.createdAt,
+    source: 'manual',
+    title: params.title,
+    description: params.description,
+    requester: {
+      name: params.requesterName,
+      email: params.requesterEmail,
+      costCenter: params.costCenter,
+    },
+    requesterUserId: params.requesterUserId,
+    type: params.type,
+    priority: params.priority,
+    serviceGroup: params.serviceGroup,
+    status: params.status,
+    workflowId: params.workflowId,
+    triageAssigneeId: params.triageAssigneeId,
+    assigneeId: params.assigneeId,
+    additionalAssigneeId: params.additionalAssigneeId,
+    appManagerId: params.appManagerId,
+    cancellationApproverId: params.cancellationApproverId,
+    cancellationItems: params.cancellationItems,
+    tasks: params.tasks ?? [],
+    comments: params.comments ?? [],
+    appointments: params.appointments ?? [],
+    expenses: [],
+    attachments: [],
+    workflowHistory: params.workflowHistory ?? [],
+    sla: {
+      deadline,
+      firstContactAt: params.appointments?.[0] ? params.createdAt : undefined,
+      resolvedAt: params.status === WORKFLOW_STEPS.completed ? params.updatedAt ?? params.createdAt : undefined,
+      status: getSlaStatus(new Date().toISOString(), deadline),
+    },
+    evaluation: params.evaluation,
+    createdAt: params.createdAt,
+    updatedAt: params.updatedAt ?? params.createdAt,
+  }
+}
+
 function seedIfNeeded(): void {
   if (localStorage.getItem(KEYS.users)) return
 
   const createdAt = now()
+  const workflow = defaultWorkflow()
   const admin: StoredUser = {
     id: 'local-admin',
     name: 'Administrador Local',
@@ -270,35 +394,434 @@ function seedIfNeeded(): void {
     createdAt,
     updatedAt: createdAt,
   }
+  const joao: StoredUser = {
+    id: 'demo-joao',
+    name: 'Joao Lopes',
+    email: 'joao.lopes@tecnoplanta.com.br',
+    role: 'manager',
+    active: true,
+    permissions: ['triage'],
+    createdAt,
+    updatedAt: createdAt,
+  }
+  const marina: StoredUser = {
+    id: 'demo-marina',
+    name: 'Marina Costa',
+    email: 'marina.costa@tecnoplanta.com.br',
+    role: 'member',
+    active: true,
+    permissions: [],
+    createdAt,
+    updatedAt: createdAt,
+  }
+  const bruno: StoredUser = {
+    id: 'demo-bruno',
+    name: 'Bruno Almeida',
+    email: 'bruno.almeida@tecnoplanta.com.br',
+    role: 'member',
+    active: true,
+    permissions: [],
+    createdAt,
+    updatedAt: createdAt,
+  }
+  const users = [admin, joao, marina, bruno]
+  const tickets: Ticket[] = [
+    demoTicket({
+      number: 1,
+      title: 'VPN desconectando no setor de vendas',
+      description: 'Usuario perde a conexao VPN varias vezes ao dia durante acesso ao SIGER.',
+      requesterName: 'Marina Costa',
+      requesterEmail: marina.email,
+      requesterUserId: marina.id,
+      costCenter: 'COM',
+      type: 'incident',
+      priority: 'P2',
+      serviceGroup: 'network_internet',
+      status: WORKFLOW_STEPS.in_triage,
+      workflowId: workflow.id,
+      triageAssigneeId: admin.id,
+      createdAt: demoDate(-1, 8, 35),
+      updatedAt: demoDate(0, 9, 10),
+      comments: [
+        { id: id(), authorId: joao.id, body: 'Validar impacto com vendas antes de encaminhar.', isInternal: true, createdAt: demoDate(-1, 10, 15) },
+      ],
+    }),
+    demoTicket({
+      number: 2,
+      title: 'Cadastro de novo colaborador no e-mail',
+      description: 'Criar conta corporativa e liberar grupos padrao para o novo assistente administrativo.',
+      requesterName: 'Bruno Almeida',
+      requesterEmail: bruno.email,
+      requesterUserId: bruno.id,
+      costCenter: 'ADM',
+      type: 'request',
+      priority: 'P3',
+      serviceGroup: 'emails',
+      status: WORKFLOW_STEPS.awaiting_service,
+      workflowId: workflow.id,
+      assigneeId: admin.id,
+      createdAt: demoDate(-2, 14, 20),
+      updatedAt: demoDate(0, 8, 45),
+      tasks: [
+        { id: id(), description: 'Criar caixa postal e aplicar assinatura padrao', assigneeId: admin.id, dueDate: demoDate(1).slice(0, 10), status: 'pending', createdAt: demoDate(-1, 9), updatedAt: demoDate(-1, 9) },
+      ],
+    }),
+    demoTicket({
+      number: 3,
+      title: 'Impressora da expedicao sem toner',
+      description: 'Equipamento imprime com falhas e precisa de verificacao de suprimentos.',
+      requesterName: 'Carla Mendes',
+      requesterEmail: 'carla.mendes@tecnoplanta.com.br',
+      costCenter: 'OPS',
+      type: 'incident',
+      priority: 'P4',
+      serviceGroup: 'printers',
+      status: WORKFLOW_STEPS.in_service,
+      workflowId: workflow.id,
+      assigneeId: admin.id,
+      createdAt: demoDate(-3, 11, 5),
+      updatedAt: demoDate(0, 10, 5),
+      appointments: [demoAppointment(admin.id, -1, '13:00', '13:40', 40, 'Teste de impressao e limpeza inicial realizados.')],
+    }),
+    demoTicket({
+      number: 4,
+      title: 'Melhoria no painel de indicadores comerciais',
+      description: 'Adicionar comparativo mensal por vendedor no painel de metas.',
+      requesterName: 'Joao Lopes',
+      requesterEmail: joao.email,
+      requesterUserId: joao.id,
+      costCenter: 'COM',
+      type: 'improvement',
+      priority: 'P3',
+      serviceGroup: 'dashboards',
+      status: WORKFLOW_STEPS.awaiting_app_manager_approval,
+      workflowId: workflow.id,
+      appManagerId: joao.id,
+      createdAt: demoDate(-4, 16, 15),
+      updatedAt: demoDate(-1, 17, 0),
+    }),
+    demoTicket({
+      number: 5,
+      title: 'Cancelar solicitacao duplicada de compra',
+      description: 'Pedido foi aberto duas vezes na plataforma de processos.',
+      requesterName: 'Marina Costa',
+      requesterEmail: marina.email,
+      requesterUserId: marina.id,
+      costCenter: 'ADM',
+      type: 'cancellation',
+      priority: 'P3',
+      serviceGroup: 'process_platform',
+      status: WORKFLOW_STEPS.awaiting_cancellation_approval,
+      workflowId: workflow.id,
+      cancellationApproverId: admin.id,
+      cancellationItems: [{ id: id(), requestNumber: 'ZV-18472', justification: 'Registro duplicado', status: 'pending' }],
+      createdAt: demoDate(-2, 15, 10),
+      updatedAt: demoDate(-1, 9, 30),
+    }),
+    demoTicket({
+      number: 6,
+      title: 'Troca de notebook concluida',
+      description: 'Equipamento antigo substituido por notebook revisado do estoque.',
+      requesterName: 'Pedro Henrique',
+      requesterEmail: 'pedro.henrique@tecnoplanta.com.br',
+      costCenter: 'OPS',
+      type: 'request',
+      priority: 'P3',
+      serviceGroup: 'gestec',
+      status: WORKFLOW_STEPS.completed,
+      workflowId: workflow.id,
+      assigneeId: admin.id,
+      createdAt: demoDate(-8, 9, 20),
+      updatedAt: demoDate(-5, 16, 40),
+      appointments: [demoAppointment(admin.id, -6, '09:30', '10:45', 75, 'Configuracao, entrega e validacao com usuario.')],
+      evaluation: { metExpectation: true, score: 9, feedback: 'Atendimento rapido e equipamento funcionando bem.' },
+    }),
+    demoTicket({
+      number: 7,
+      title: 'Erro ao emitir nota no SIGER',
+      description: 'Sistema retorna mensagem de rejeicao ao confirmar NF-e.',
+      requesterName: 'Bruno Almeida',
+      requesterEmail: bruno.email,
+      requesterUserId: bruno.id,
+      costCenter: 'ADM',
+      type: 'service_interruption',
+      priority: 'P1',
+      serviceGroup: 'erp',
+      status: WORKFLOW_STEPS.in_service,
+      workflowId: workflow.id,
+      assigneeId: joao.id,
+      additionalAssigneeId: admin.id,
+      createdAt: demoDate(0, 7, 50),
+      updatedAt: demoDate(0, 11, 20),
+      comments: [
+        { id: id(), authorId: admin.id, body: 'Chamado acompanhado com prioridade por impacto fiscal.', isInternal: true, createdAt: demoDate(0, 8, 30) },
+      ],
+    }),
+    demoTicket({
+      number: 8,
+      title: 'Solicitar acesso ao servidor de arquivos',
+      description: 'Liberar permissao de leitura para pasta do projeto industrial.',
+      requesterName: 'Administrador Local',
+      requesterEmail: admin.email,
+      requesterUserId: admin.id,
+      costCenter: 'TI',
+      type: 'request',
+      priority: 'P4',
+      serviceGroup: 'access_accounts',
+      status: WORKFLOW_STEPS.awaiting_evaluation,
+      workflowId: workflow.id,
+      assigneeId: joao.id,
+      createdAt: demoDate(-6, 10, 0),
+      updatedAt: demoDate(-2, 14, 0),
+    }),
+  ]
+  const projects: Project[] = [
+    {
+      id: 'demo-project-1',
+      name: 'Modernizacao do parque de notebooks',
+      description: 'Levantamento e substituicao gradual dos equipamentos mais antigos.',
+      costCenter: 'TI',
+      hourlyRate: 145,
+      tasks: [
+        { id: 'demo-project-task-1', title: 'Inventario dos equipamentos', description: 'Conferir ativos por setor.', assigneeId: admin.id, appointments: [demoAppointment(admin.id, -2, '08:00', '09:30', 90, 'Planilha inicial atualizada.')], expenses: [], createdAt: demoDate(-10), updatedAt: demoDate(-2) },
+        { id: 'demo-project-task-2', title: 'Planejar trocas da expedicao', description: 'Priorizar usuarios com maior tempo de uso.', assigneeId: joao.id, appointments: [], expenses: [], createdAt: demoDate(-7), updatedAt: demoDate(-1) },
+      ],
+      expenses: [],
+      attachments: [],
+      createdAt: demoDate(-12),
+      updatedAt: demoDate(-1),
+    },
+  ]
 
-  write(KEYS.users, [admin])
-  write(KEYS.tickets, [])
-  write(KEYS.projects, [])
-  write(KEYS.workflows, [defaultWorkflow()])
+  write(KEYS.users, users)
+  write(KEYS.tickets, tickets)
+  write(KEYS.projects, projects)
+  write(KEYS.workflows, [workflow])
   write<SlaRule[]>(KEYS.slaRules, [
     { id: id(), name: 'P1 - Critico', priority: 'P1', deadlineHours: 4, createdAt, updatedAt: createdAt },
     { id: id(), name: 'P2 - Alto', priority: 'P2', deadlineHours: 8, createdAt, updatedAt: createdAt },
     { id: id(), name: 'P3 - Normal', priority: 'P3', deadlineHours: 24, createdAt, updatedAt: createdAt },
     { id: id(), name: 'P4 - Baixo', priority: 'P4', deadlineHours: 72, createdAt, updatedAt: createdAt },
   ])
-  write(KEYS.discordRules, [])
-  write(KEYS.auditLogs, [])
+  write<DiscordNotificationRule[]>(KEYS.discordRules, [
+    {
+      id: 'demo-discord-rule-1',
+      name: 'Avisar chamados P1',
+      webhookUrl: 'https://discord.com/api/webhooks/demo/simulado',
+      triggerOn: 'ticket_created',
+      conditions: [{ field: 'priority', operator: 'equal', value: 'P1' }],
+      messageTemplate: 'Novo ticket critico {ticket.publicId} - {ticket.priority}',
+      active: true,
+      createdAt,
+      updatedAt: createdAt,
+    },
+  ])
+  write<AuditLog[]>(KEYS.auditLogs, tickets.slice(0, 5).map((ticket) => ({
+    id: id(),
+    entityType: 'ticket',
+    entityId: ticket.id,
+    action: 'demo_seed_created',
+    userId: 'system',
+    workflowStep: ticket.status,
+    justification: 'Registro ficticio criado para demonstracao local.',
+    createdAt: ticket.createdAt,
+  })))
   write<CostCenter[]>(KEYS.costCenters, [
     { id: id(), code: 'TI', name: 'Tecnologia da Informacao', active: true, createdAt, updatedAt: createdAt },
     { id: id(), code: 'ADM', name: 'Administrativo', active: true, createdAt, updatedAt: createdAt },
     { id: id(), code: 'OPS', name: 'Operacoes', active: true, createdAt, updatedAt: createdAt },
+    { id: id(), code: 'COM', name: 'Comercial', active: true, createdAt, updatedAt: createdAt },
   ])
   write<AppConfig>(KEYS.appConfig, {
     id: 'default',
     npsLowScoreThreshold: 6,
     adjustmentTimeoutDays: 3,
     adjustmentTimeoutEnabled: true,
+    defaultTriageAssigneeId: admin.id,
+    defaultCancellationApproverId: admin.id,
     emailEnabled: false,
     updatedAt: createdAt,
   })
-  write(KEYS.apiIntegrations, [])
-  write(KEYS.timers, [])
+  write<ApiIntegration[]>(KEYS.apiIntegrations, [
+    {
+      id: 'demo-api-integration-1',
+      name: 'Consulta de ativos - simulado',
+      kind: 'rest_json',
+      method: 'GET',
+      url: 'https://api.exemplo.local/ativos',
+      authType: 'none',
+      parameters: [{ key: 'patrimonio', value: '{assetCode}' }],
+      headers: [],
+      accessoryFields: [],
+      locked: true,
+      createdById: admin.id,
+      createdByName: admin.name,
+      createdAt,
+      updatedAt: createdAt,
+    },
+  ])
+  write<ActiveTimer[]>(KEYS.timers, [
+    {
+      id: 'demo-timer-1',
+      entityId: 'demo-ticket-7',
+      entityType: 'ticket',
+      entityTitle: 'Erro ao emitir nota no SIGER',
+      state: 'running',
+      startedAt: demoDate(0, 11, 30),
+      accumulatedSeconds: 14 * 60,
+      technicianId: admin.id,
+    },
+  ])
   localStorage.removeItem(KEYS.session)
+  localStorage.setItem(DEMO_SEED_KEY, DEMO_SEED_VERSION)
+}
+
+function seedDemoDataIfEmpty(): void {
+  if (localStorage.getItem(DEMO_SEED_KEY) === DEMO_SEED_VERSION) return
+
+  const createdAt = now()
+  const users = read<StoredUser[]>(KEYS.users, [])
+  const admin = users.find((user) => user.role === 'admin') ?? users[0]
+  if (!admin) return
+
+  const joao: StoredUser =
+    users.find((user) => user.id === 'demo-joao') ?? {
+      id: 'demo-joao',
+      name: 'Joao Lopes',
+      email: 'joao.lopes@tecnoplanta.com.br',
+      role: 'manager',
+      active: true,
+      permissions: ['triage'],
+      createdAt,
+      updatedAt: createdAt,
+    }
+  const marina: StoredUser =
+    users.find((user) => user.id === 'demo-marina') ?? {
+      id: 'demo-marina',
+      name: 'Marina Costa',
+      email: 'marina.costa@tecnoplanta.com.br',
+      role: 'member',
+      active: true,
+      permissions: [],
+      createdAt,
+      updatedAt: createdAt,
+    }
+
+  const workflow = read<Workflow[]>(KEYS.workflows, [defaultWorkflow()])[0] ?? defaultWorkflow()
+  const costCenters = read<CostCenter[]>(KEYS.costCenters, [])
+  const existingTickets = read<Ticket[]>(KEYS.tickets, [])
+  const tickets: Ticket[] = [
+    demoTicket({
+      number: 101,
+      title: 'VPN desconectando no setor de vendas',
+      description: 'Usuario perde a conexao VPN varias vezes ao dia durante acesso ao SIGER.',
+      requesterName: marina.name,
+      requesterEmail: marina.email,
+      requesterUserId: marina.id,
+      costCenter: 'COM',
+      type: 'incident',
+      priority: 'P2',
+      serviceGroup: 'network_internet',
+      status: WORKFLOW_STEPS.in_triage,
+      workflowId: workflow.id,
+      triageAssigneeId: admin.id,
+      createdAt: demoDate(-1, 8, 35),
+      updatedAt: demoDate(0, 9, 10),
+    }),
+    demoTicket({
+      number: 102,
+      title: 'Cadastro de novo colaborador no e-mail',
+      description: 'Criar conta corporativa e liberar grupos padrao para o novo assistente administrativo.',
+      requesterName: 'Bruno Almeida',
+      requesterEmail: 'bruno.almeida@tecnoplanta.com.br',
+      costCenter: 'ADM',
+      type: 'request',
+      priority: 'P3',
+      serviceGroup: 'emails',
+      status: WORKFLOW_STEPS.awaiting_service,
+      workflowId: workflow.id,
+      assigneeId: admin.id,
+      createdAt: demoDate(-2, 14, 20),
+      updatedAt: demoDate(0, 8, 45),
+    }),
+    demoTicket({
+      number: 103,
+      title: 'Erro ao emitir nota no SIGER',
+      description: 'Sistema retorna mensagem de rejeicao ao confirmar NF-e.',
+      requesterName: joao.name,
+      requesterEmail: joao.email,
+      requesterUserId: joao.id,
+      costCenter: 'ADM',
+      type: 'service_interruption',
+      priority: 'P1',
+      serviceGroup: 'erp',
+      status: WORKFLOW_STEPS.in_service,
+      workflowId: workflow.id,
+      assigneeId: joao.id,
+      additionalAssigneeId: admin.id,
+      createdAt: demoDate(0, 7, 50),
+      updatedAt: demoDate(0, 11, 20),
+    }),
+  ]
+
+  saveUsers([...users, ...[joao, marina].filter((user) => !users.some((item) => item.id === user.id))])
+  write(KEYS.tickets, [
+    ...existingTickets,
+    ...tickets.filter((ticket) => !existingTickets.some((item) => item.id === ticket.id)),
+  ])
+  if (!read<Workflow[]>(KEYS.workflows, []).length) write(KEYS.workflows, [workflow])
+  write(KEYS.costCenters, costCenters.some((item) => item.code === 'COM') ? costCenters : [...costCenters, { id: id(), code: 'COM', name: 'Comercial', active: true, createdAt, updatedAt: createdAt }])
+  const existingIntegrations = read<ApiIntegration[]>(KEYS.apiIntegrations, [])
+  if (!existingIntegrations.some((item) => item.id === 'demo-api-integration-1')) {
+    write<ApiIntegration[]>(KEYS.apiIntegrations, [
+      ...existingIntegrations,
+      {
+        id: 'demo-api-integration-1',
+        name: 'Consulta de ativos - simulado',
+        kind: 'rest_json',
+        method: 'GET',
+        url: 'https://api.exemplo.local/ativos',
+        authType: 'none',
+        parameters: [{ key: 'patrimonio', value: '{assetCode}' }],
+        headers: [],
+        accessoryFields: [],
+        locked: true,
+        createdById: admin.id,
+        createdByName: admin.name,
+        createdAt,
+        updatedAt: createdAt,
+      },
+    ])
+  }
+  write<ActiveTimer[]>(KEYS.timers, [
+    {
+      id: 'demo-timer-1',
+      entityId: 'demo-ticket-103',
+      entityType: 'ticket',
+      entityTitle: 'Erro ao emitir nota no SIGER',
+      state: 'running',
+      startedAt: demoDate(0, 11, 30),
+      accumulatedSeconds: 14 * 60,
+      technicianId: admin.id,
+    },
+  ])
+  const existingAuditLogs = read<AuditLog[]>(KEYS.auditLogs, [])
+  write(KEYS.auditLogs, [
+    ...tickets
+      .filter((ticket) => !existingAuditLogs.some((item) => item.entityId === ticket.id && item.action === 'demo_seed_created'))
+      .map((ticket) => ({
+    id: id(),
+    entityType: 'ticket',
+    entityId: ticket.id,
+    action: 'demo_seed_created',
+    userId: 'system',
+    workflowStep: ticket.status,
+    justification: 'Registro ficticio criado para demonstracao local.',
+    createdAt: ticket.createdAt,
+      })),
+    ...existingAuditLogs,
+  ])
+  localStorage.setItem(DEMO_SEED_KEY, DEMO_SEED_VERSION)
 }
 
 function addAudit(
@@ -441,6 +964,7 @@ function appointmentFromTimer(timer: ActiveTimer): Appointment {
 }
 
 seedIfNeeded()
+seedDemoDataIfEmpty()
 
 export const localAPI: GestecAPI = {
   async getSession(): Promise<SessionResult | null> {
@@ -515,10 +1039,10 @@ export const localAPI: GestecAPI = {
 
   async listTickets(filter?: ListTicketsFilterPayload): Promise<Ticket[]> {
     const user = requireUser()
-    const tickets = read<Ticket[]>(KEYS.tickets, []).map(refreshTicketSla)
-    const filtered = tickets.filter((ticket) => {
+    const tickets = normalizeTicketPublicIds(read<Ticket[]>(KEYS.tickets, [])).map(refreshTicketSla)
+    const queued = tickets.filter((ticket) => {
       if (!filter?.queue || filter.queue === 'all') return true
-      if (filter.queue === 'mine') return ticket.requesterUserId === user.id || ticket.assigneeId === user.id
+      if (filter.queue === 'mine') return filterTicketsForWorkQueue([ticket], user).length > 0
       if (filter.queue === 'triage') return ticket.status === WORKFLOW_STEPS.in_triage
       if (filter.queue === 'service') return [WORKFLOW_STEPS.awaiting_service, WORKFLOW_STEPS.in_service].includes(ticket.status as never)
       if (filter.queue === 'completion') return ticket.status === WORKFLOW_STEPS.awaiting_completion_approval
@@ -527,12 +1051,16 @@ export const localAPI: GestecAPI = {
       if (filter.queue === 'cancellation') return ticket.status === WORKFLOW_STEPS.awaiting_cancellation_approval
       return true
     })
+    const filtered =
+      filter?.queue === 'all' && filter.scope
+        ? filterTicketsByScope(queued, filter.scope, user)
+        : queued
     return clone(filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)))
   },
 
   async getTicketById(ticketId: string): Promise<Ticket> {
     requireUser()
-    const ticket = read<Ticket[]>(KEYS.tickets, []).find((item) => item.id === ticketId)
+    const ticket = normalizeTicketPublicIds(read<Ticket[]>(KEYS.tickets, [])).find((item) => item.id === ticketId)
     if (!ticket) fail('TICKET_NOT_FOUND')
     return clone(refreshTicketSla(ticket))
   },
@@ -545,9 +1073,10 @@ export const localAPI: GestecAPI = {
     const createdAt = now()
     const status = getInitialStepForType(payload.type, payload.directCancellation)
     const deadline = deadlineFor(createdAt, payload.priority, payload.serviceGroup)
+    const appConfig = read<AppConfig>(KEYS.appConfig, {} as AppConfig)
     const ticket: Ticket = {
       id: id(),
-      ticketNumber: `GHD-${new Date().getFullYear()}-${String(tickets.length + 1).padStart(4, '0')}`,
+      ticketNumber: getNextPublicTicketId(tickets),
       openedAt: createdAt,
       source: 'manual',
       title: payload.title.trim(),
@@ -577,7 +1106,7 @@ export const localAPI: GestecAPI = {
       directCancellation: payload.directCancellation,
       status,
       workflowId: defaultWorkflowId(),
-      assigneeId: payload.type === 'cancellation' ? undefined : payload.requesterUserId,
+      triageAssigneeId: status === WORKFLOW_STEPS.in_triage ? appConfig.defaultTriageAssigneeId : undefined,
       level: payload.level,
       assetCode: payload.assetCode,
       supportNotes: payload.supportNotes,

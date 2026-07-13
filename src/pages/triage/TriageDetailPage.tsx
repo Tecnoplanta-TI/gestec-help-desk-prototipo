@@ -12,6 +12,7 @@ import type {
 } from '../../../shared/types'
 import { WORKFLOW_STEPS } from '../../../shared/lib/workflow-steps'
 import { hasPermission } from '../../../shared/lib/permissions'
+import { getTicketDisplayId } from '../../../shared/lib/ticket-public-id'
 import {
   LEVEL_LABEL,
   PRIORITY_LABEL,
@@ -224,7 +225,7 @@ export default function TriageDetailPage(): JSX.Element {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Triagem · ${ticket.ticketNumber ?? ticket.id.slice(0, 8)}`}
+        title={`Triagem · ${getTicketDisplayId(ticket)}`}
         description={ticket.title}
       >
         <Button variant="outline" size="sm" asChild>
@@ -281,7 +282,7 @@ export default function TriageDetailPage(): JSX.Element {
             </CardHeader>
             <CardContent className="space-y-4">
               <dl>
-                <InfoRow label="Número ticket" value={ticket.ticketNumber ?? '—'} />
+                <InfoRow label="Número ticket" value={getTicketDisplayId(ticket)} />
               </dl>
 
               <div className="grid gap-4 sm:grid-cols-2">

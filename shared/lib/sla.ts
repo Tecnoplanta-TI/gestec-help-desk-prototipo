@@ -33,7 +33,7 @@ export function formatSlaRemaining(deadline: string): string {
     const absMinutes = Math.abs(diffMinutes)
     const h = Math.floor(absMinutes / 60)
     const m = absMinutes % 60
-    return h > 0 ? `Expirado ha ${h}h ${m}min` : `Expirado ha ${m}min`
+    return h > 0 ? `Expirado há ${h}h ${m}min` : `Expirado há ${m}min`
   }
 
   const h = Math.floor(diffMinutes / 60)

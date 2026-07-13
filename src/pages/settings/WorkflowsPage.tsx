@@ -526,7 +526,7 @@ export default function WorkflowsPage(): JSX.Element {
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Origem" />
+                          <SelectValue placeholder="Etapa inicial" />
                         </SelectTrigger>
                         <SelectContent>
                           {stepOptions.map((option) => (

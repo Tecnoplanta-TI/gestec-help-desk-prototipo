@@ -307,12 +307,12 @@ export default function DiscordNotificationsPage(): JSX.Element {
                 id="d-template"
                 value={messageTemplate}
                 onChange={(e) => setMessageTemplate(e.target.value)}
-                placeholder="Ex.: Ticket {ticket.id} - {ticket.priority}"
+                placeholder="Ex.: Ticket {ticket.publicId} - {ticket.priority}"
                 className="min-h-24"
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Use variáveis como {'{ticket.id}'}, {'{ticket.priority}'} ou {'{requester.name}'}.
+                Use variáveis como {'{ticket.publicId}'}, {'{ticket.priority}'} ou {'{requester.name}'}.
               </p>
             </div>
 
