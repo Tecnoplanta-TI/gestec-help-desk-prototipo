@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+﻿import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ListTicketsFilterPayload, Ticket, TicketQueue } from '../../../shared/types'
-import { ZEEV_STEP_LABELS } from '../../../shared/lib/zeev-steps'
+import { WORKFLOW_STEP_LABELS } from '../../../shared/lib/workflow-steps'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -62,7 +62,7 @@ export default function TicketQueuePage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title={QUEUE_TITLES[queue]} description="Tickets filtrados por etapa do fluxo Zeev" />
+      <PageHeader title={QUEUE_TITLES[queue]} description="Tickets filtrados por etapa do fluxo interno" />
       {error && <StatusAlert variant="error" message={error} />}
       {loading ? (
         <InlineLoader />
@@ -92,7 +92,7 @@ export default function TicketQueuePage({
                 <TableCell>
                   <Badge>{t.priority}</Badge>
                 </TableCell>
-                <TableCell>{ZEEV_STEP_LABELS[t.status] ?? t.status}</TableCell>
+                <TableCell>{WORKFLOW_STEP_LABELS[t.status] ?? t.status}</TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Clock, MessageSquare, Package, Pause, Play, Plus, SkipForward, Square, Timer, Trash2 } from 'lucide-react'
 import type {
@@ -12,7 +12,7 @@ import type {
   User,
 } from '../../../shared/types'
 import { formatDuration } from '../../../shared/lib/time'
-import { ZEEV_STEPS } from '../../../shared/lib/zeev-steps'
+import { WORKFLOW_STEPS } from '../../../shared/lib/workflow-steps'
 import { hasPermission } from '../../../shared/lib/permissions'
 import {
   LEVEL_LABEL,
@@ -107,7 +107,7 @@ export default function ServiceDetailPage(): JSX.Element {
   const [apptEnd, setApptEnd] = useState('10:00')
   const [apptNote, setApptNote] = useState('')
 
-  const [createZeevUser, setCreateZeevUser] = useState(false)
+  const [createPlatformUser, setCreatePlatformUser] = useState(false)
   const [createEmail, setCreateEmail] = useState(false)
   const [facilitatorChecklist, setFacilitatorChecklist] = useState('')
   const [securitySealChanged, setSecuritySealChanged] = useState(false)
@@ -119,8 +119,8 @@ export default function ServiceDetailPage(): JSX.Element {
 
   const showFacilitator = serviceGroup === 'access_accounts'
 
-  const isInService = ticket?.status === ZEEV_STEPS.in_service
-  const isAwaiting = ticket?.status === ZEEV_STEPS.awaiting_service
+  const isInService = ticket?.status === WORKFLOW_STEPS.in_service
+  const isAwaiting = ticket?.status === WORKFLOW_STEPS.awaiting_service
   const canEdit = isInService
 
   const agents = useMemo(
@@ -169,7 +169,7 @@ export default function ServiceDetailPage(): JSX.Element {
       setAdditionalAssigneeId(ticketData.additionalAssigneeId ?? '')
       setEquipment(ticketData.deliveredEquipment ?? [])
       setApptTechnicianId(ticketData.assigneeId ?? '')
-      setCreateZeevUser(ticketData.createZeevUser ?? false)
+      setCreatePlatformUser(ticketData.createPlatformUser ?? false)
       setCreateEmail(ticketData.createEmail ?? false)
       setFacilitatorChecklist(ticketData.facilitatorChecklist ?? '')
       setSecuritySealChanged(ticketData.securitySealChanged ?? false)
@@ -198,7 +198,7 @@ export default function ServiceDetailPage(): JSX.Element {
         serviceDueDate: serviceDueDate || undefined,
         additionalAssigneeId: additionalAssigneeId || null,
         deliveredEquipment: equipment,
-        createZeevUser,
+        createPlatformUser,
         createEmail,
         facilitatorChecklist: facilitatorChecklist || undefined,
         securitySealChanged,
@@ -364,6 +364,23 @@ export default function ServiceDetailPage(): JSX.Element {
     }
   }
 
+  function addEquipmentRow(): void {
+    setEquipment((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), assetId: '', description: '' },
+    ])
+  }
+
+  function updateEquipmentRow(rowId: string, field: 'assetId' | 'description', value: string): void {
+    setEquipment((prev) =>
+      prev.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)),
+    )
+  }
+
+  function removeEquipmentRow(rowId: string): void {
+    setEquipment((prev) => prev.filter((row) => row.id !== rowId))
+  }
+
   async function handleComplete(): Promise<void> {
     if (!ticket) return
     if (!serviceDueDate) {
@@ -385,7 +402,7 @@ export default function ServiceDetailPage(): JSX.Element {
         serviceDueDate: serviceDueDate || undefined,
         additionalAssigneeId: additionalAssigneeId || null,
         deliveredEquipment: equipment,
-        createZeevUser,
+        createPlatformUser,
         createEmail,
         facilitatorChecklist: facilitatorChecklist || undefined,
         securitySealChanged,
@@ -724,11 +741,11 @@ export default function ServiceDetailPage(): JSX.Element {
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Criar usuário no Zeev?</Label>
+                  <Label>Criar usuário na plataforma?</Label>
                   <Select
-                    value={createZeevUser ? 'yes' : 'no'}
+                    value={createPlatformUser ? 'yes' : 'no'}
                     onValueChange={(v) => {
-                      setCreateZeevUser(v === 'yes')
+                      setCreatePlatformUser(v === 'yes')
                       void persistServiceFields()
                     }}
                   >
@@ -1040,23 +1057,61 @@ export default function ServiceDetailPage(): JSX.Element {
                     <Package className="h-4 w-4 text-muted-foreground" />
                     Equipamentos entregues
                   </CardTitle>
-                  <Button type="button" variant="outline" size="sm" asChild>
-                    <Link to={`/service/${ticket.id}/equipment`}>
-                      Gerenciar
-                    </Link>
+                  <Button type="button" variant="outline" size="sm" onClick={addEquipmentRow}>
+                    <Plus className="mr-1 h-4 w-4" />
+                    Inserir
                   </Button>
                 </CardHeader>
                 <CardContent>
                   {equipment.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nenhum equipamento registrado.</p>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {equipment.length} {equipment.length === 1 ? 'item registrado' : 'itens registrados'}.
-                      {' '}
-                      <Link to={`/service/${ticket.id}/equipment`} className="text-primary hover:underline">
-                        Ver tela completa
-                      </Link>
-                    </p>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10" />
+                          <TableHead>ID Patrimonial</TableHead>
+                          <TableHead>Descrição</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {equipment.map((row) => (
+                          <TableRow key={row.id}>
+                            <TableCell>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => removeEquipmentRow(row.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={row.assetId}
+                                onChange={(e) =>
+                                  updateEquipmentRow(row.id, 'assetId', e.target.value)
+                                }
+                                onBlur={() => void persistServiceFields()}
+                                placeholder="Código patrimonial"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={row.description}
+                                onChange={(e) =>
+                                  updateEquipmentRow(row.id, 'description', e.target.value)
+                                }
+                                onBlur={() => void persistServiceFields()}
+                                placeholder="Descrição do equipamento"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   )}
                 </CardContent>
               </Card>

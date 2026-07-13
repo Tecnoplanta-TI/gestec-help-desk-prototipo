@@ -1,33 +1,9 @@
-/**
- * src/router.tsx — Definição de rotas da aplicação
- *
- * Usa React Router v7 com lazy loading por página para reduzir o bundle
- * inicial e acelerar o primeiro render.
- *
- * Estrutura de rotas:
- * /                   → redireciona para /tickets
- * /login              → página de login (pública)
- * /tickets            → lista de tickets
- * /tickets/kanban     → visualização kanban
- * /tickets/:id        → detalhe do ticket
- * /projects           → lista de projetos
- * /projects/:id       → detalhe do projeto
- * /reports/billing    → relatório de faturamento
- * /settings/*         → configurações (usuários, workflows, SLA, Discord, valores)
- */
-
-import { createBrowserRouter, createHashRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import type { ComponentType } from 'react'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { PageLoader } from './components/shared/PageLoader'
-import { isElectron } from './lib/platform'
 
-// Layout raiz (sidebar + header)
-// Será criado na fase de UI — placeholder por enquanto
 const RootLayout = lazy(() => import('./components/layout/RootLayout'))
-
-// Páginas com lazy loading
-const LoginPage = lazy(() => import('./pages/auth/LoginPage'))
 const TicketListPage = lazy(() => import('./pages/tickets/TicketListPage'))
 const TicketKanbanPage = lazy(() => import('./pages/tickets/TicketKanbanPage'))
 const TicketDetailPage = lazy(() => import('./pages/tickets/TicketDetailPage'))
@@ -45,8 +21,6 @@ const CancellationApprovalsPage = lazy(() => import('./pages/approvals/Cancellat
 const ReportsDashboardPage = lazy(() => import('./pages/reports/ReportsDashboardPage'))
 const BillingReportPage = lazy(() => import('./pages/reports/BillingReportPage'))
 const TicketEvaluationPage = lazy(() => import('./pages/tickets/TicketEvaluationPage'))
-const DeliveredEquipmentPage = lazy(() => import('./pages/service/DeliveredEquipmentPage'))
-const FloatingTimerPage = lazy(() => import('./pages/FloatingTimerPage'))
 const WorkflowsPage = lazy(() => import('./pages/settings/WorkflowsPage'))
 const UsersPage = lazy(() => import('./pages/settings/UsersPage'))
 const RatesPage = lazy(() => import('./pages/settings/RatesPage'))
@@ -63,16 +37,7 @@ function withSuspense(Component: ComponentType): JSX.Element {
   )
 }
 
-// HashRouter no Electron (file://); BrowserRouter no navegador
 const routes = [
-  {
-    path: '/login',
-    element: withSuspense(LoginPage),
-  },
-  {
-    path: '/floating',
-    element: withSuspense(FloatingTimerPage),
-  },
   {
     path: '/',
     element: withSuspense(RootLayout),
@@ -86,7 +51,6 @@ const routes = [
       { path: 'triage', element: withSuspense(TriagePage) },
       { path: 'triage/:id', element: withSuspense(TriageDetailPage) },
       { path: 'service', element: withSuspense(ServicePage) },
-      { path: 'service/:id/equipment', element: withSuspense(DeliveredEquipmentPage) },
       { path: 'service/:id', element: withSuspense(ServiceDetailPage) },
       { path: 'completion', element: withSuspense(CompletionPage) },
       { path: 'completion/:id', element: withSuspense(CompletionDetailPage) },
@@ -111,8 +75,9 @@ const routes = [
           { path: 'integrations', element: withSuspense(ApiIntegrationsListPage) },
         ],
       },
+      { path: '*', element: <Navigate to="/tickets" replace /> },
     ],
   },
 ]
 
-export const router = isElectron() ? createHashRouter(routes) : createBrowserRouter(routes)
+export const router = createBrowserRouter(routes)

@@ -14,8 +14,9 @@ export const PERMISSIONS = [
 export type Permission = (typeof PERMISSIONS)[number]
 
 export function hasPermission(user: Pick<User, 'role' | 'permissions'>, permission: Permission): boolean {
-  if (user.role === 'admin' || user.permissions.includes('admin')) return true
-  if (user.permissions.includes(permission)) return true
+  const permissions = user.permissions ?? []
+  if (user.role === 'admin' || permissions.includes('admin')) return true
+  if (permissions.includes(permission)) return true
   if (permission === 'agent' && user.role === 'member') return true
   if (permission === 'triage' && user.role === 'manager') return true
   if (permission === 'it_manager' && user.role === 'manager') return true

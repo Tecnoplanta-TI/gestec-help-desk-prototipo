@@ -1,8 +1,7 @@
-/**
+﻿/**
  * shared/types/index.ts
  *
- * Tipos compartilhados entre Main Process (Electron) e Renderer Process (React).
- * Importados via alias @shared/* em ambos os lados.
+ * Tipos compartilhados da SPA React.
  *
  * Regra: NUNCA importar aqui tipos específicos de Node.js ou do browser —
  * este arquivo deve ser agnóstico de ambiente.
@@ -108,10 +107,10 @@ export interface User {
 
 // ─── Payloads de autenticação / usuários ──────────────────────────────────────
 
-export interface LoginResult {
+export interface SessionResult {
   user: User
   expiresAt: string // ISO datetime
-  /** JWT retornado no login (modo navegador) */
+  /** Token opcional mantido apenas por compatibilidade de contrato. */
   token?: string
 }
 
@@ -119,7 +118,6 @@ export interface CreateUserPayload {
   name: string
   email: string
   role: UserRole
-  password: string
 }
 
 export interface UpdateUserPayload {
@@ -129,11 +127,6 @@ export interface UpdateUserPayload {
   role?: UserRole
 }
 
-export interface ResetPasswordPayload {
-  userId: string
-  newPassword: string
-}
-
 export interface ToggleUserActivePayload {
   userId: string
   active: boolean
@@ -141,7 +134,7 @@ export interface ToggleUserActivePayload {
 
 export interface TicketCancellationItem {
   id: string
-  zeevRequestNumber: string
+  requestNumber: string
   justification?: string
   status: CancellationItemStatus
   processedAt?: string
@@ -228,7 +221,7 @@ export interface CreateTicketPayload {
   supportNotes?: string
   level?: TicketLevel
   downtimeMinutes?: number
-  cancellationItems?: Array<{ zeevRequestNumber: string; justification?: string }>
+  cancellationItems?: Array<{ requestNumber: string; justification?: string }>
   cancellationApproverId?: string
   directCancellation?: boolean
 }
@@ -308,7 +301,7 @@ export interface UpdateServiceTicketPayload {
   additionalAssigneeId?: string | null
   supportNotes?: string
   deliveredEquipment?: DeliveredEquipmentItem[]
-  createZeevUser?: boolean
+  createPlatformUser?: boolean
   createEmail?: boolean
   facilitatorChecklist?: string
   securitySealChanged?: boolean
@@ -345,7 +338,7 @@ export interface SubmitTicketEvaluationPayload {
 
 export interface ListTicketsFilterPayload {
   queue?: TicketQueue
-  /** Escopo de visibilidade na listagem geral (estilo Zeev "Acompanhar solicitação"). */
+  /** Escopo de visibilidade na listagem geral. */
   scope?: TicketListScope
 }
 
@@ -595,7 +588,7 @@ export interface Ticket {
   additionalAssigneeId?: string
   serviceDueDate?: string
   deliveredEquipment?: DeliveredEquipmentItem[]
-  createZeevUser?: boolean
+  createPlatformUser?: boolean
   createEmail?: boolean
   facilitatorChecklist?: string
   securitySealChanged?: boolean
@@ -887,18 +880,16 @@ export interface ActiveTimer {
   technicianId: string
 }
 
-// ─── IPC — contrato tipado entre Main e Renderer ─────────────────────────────
+// ─── API local usada pela SPA ────────────────────────────────────────────────
 
-export interface ElectronAPI {
-  // Auth
-  login: (email: string, password: string) => Promise<LoginResult>
+export interface GestecAPI {
+  // Sessao local automatica do modulo
+  getSession: () => Promise<SessionResult | null>
   logout: () => Promise<void>
-  getSession: () => Promise<LoginResult | null>
   // Gestão de usuários (admin)
   listUsers: () => Promise<User[]>
   createUser: (payload: CreateUserPayload) => Promise<User>
   updateUser: (payload: UpdateUserPayload) => Promise<User>
-  resetPassword: (payload: ResetPasswordPayload) => Promise<void>
   toggleUserActive: (payload: ToggleUserActivePayload) => Promise<User>
   // Tickets
   listTickets: (filter?: ListTicketsFilterPayload) => Promise<Ticket[]>
@@ -974,10 +965,5 @@ export interface ElectronAPI {
   pauseTimer: (timerId: string) => Promise<ActiveTimer>
   stopTimer: (timerId: string) => Promise<Appointment>
   getActiveTimers: () => Promise<ActiveTimer[]>
-  // Janela flutuante
-  openFloatingWindow: () => Promise<void>
-  closeFloatingWindow: () => Promise<void>
-  toggleFloatingPin: (pinned: boolean) => Promise<boolean>
-  // Eventos Main → Renderer
   onTimerTick: (callback: (timers: ActiveTimer[]) => void) => () => void
 }

@@ -7,7 +7,7 @@ function resolveRequesterEmail(payload: CreateTicketPayload): string {
   return 'solicitante@gestec.local'
 }
 
-/** Remove strings vazias de campos opcionais antes de enviar ao IPC (evita falha de UUID no Zod). */
+/** Remove strings vazias de campos opcionais antes de validar no cliente. */
 export function sanitizeCreateTicketPayload(payload: CreateTicketPayload): CreateTicketPayload {
   const clean = { ...payload }
 

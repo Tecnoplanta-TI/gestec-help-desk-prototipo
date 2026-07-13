@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, ClipboardCheck } from 'lucide-react'
 import type {
@@ -10,7 +10,7 @@ import type {
   TicketType,
   User,
 } from '../../../shared/types'
-import { ZEEV_STEPS } from '../../../shared/lib/zeev-steps'
+import { WORKFLOW_STEPS } from '../../../shared/lib/workflow-steps'
 import { hasPermission } from '../../../shared/lib/permissions'
 import {
   LEVEL_LABEL,
@@ -171,7 +171,7 @@ export default function TriageDetailPage(): JSX.Element {
     )
   }
 
-  if (ticket.status !== ZEEV_STEPS.in_triage) {
+  if (ticket.status !== WORKFLOW_STEPS.in_triage) {
     return (
       <div className="space-y-4">
         <StatusAlert

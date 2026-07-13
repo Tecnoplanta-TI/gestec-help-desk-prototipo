@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import type { TicketReportStats } from '../../../shared/types'
 import { ipc } from '@/lib/ipc'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -17,7 +17,7 @@ export default function ReportsDashboardPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Indicadores" description="KPIs operacionais — fluxo Zeev" />
+      <PageHeader title="Indicadores" description="KPIs operacionais — fluxo interno" />
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>

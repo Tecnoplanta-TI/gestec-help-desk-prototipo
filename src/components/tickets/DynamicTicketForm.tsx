@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import type {
   CostCenter,
   CreateTicketPayload,
@@ -44,7 +44,7 @@ const TYPE_LABEL: Record<TicketType, string> = {
   service_interruption: 'Interrupção de serviço',
   improvement: 'Melhoria',
   request: 'Solicitação',
-  cancellation: 'Cancelamento Zeev',
+  cancellation: 'Cancelamento de solicitação',
 }
 
 const PRIORITIES: TicketPriority[] = ['P1', 'P2', 'P3', 'P4']
@@ -129,7 +129,7 @@ export function DynamicTicketForm({
   })
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [cancelRows, setCancelRows] = useState<CancellationRow[]>([
-    { zeevRequestNumber: '', justification: '' },
+    { requestNumber: '', justification: '' },
   ])
 
   useEffect(() => {
@@ -203,7 +203,7 @@ export function DynamicTicketForm({
       title: form.title || form.description.slice(0, 80),
       cancellationItems:
         form.type === 'cancellation'
-          ? cancelRows.filter((r) => r.zeevRequestNumber.trim())
+          ? cancelRows.filter((r) => r.requestNumber.trim())
           : undefined,
     })
     await onSubmit(payload)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Lock, Plus, Search } from 'lucide-react'
 import type { ApiIntegration, ApiIntegrationKind } from '../../../shared/types'
@@ -74,7 +74,7 @@ export default function ApiIntegrationsListPage(): JSX.Element {
     <div className="space-y-6">
       <PageHeader
         title="Integrações"
-        description="Configure chamadas HTTP e integrações externas, no estilo do Zeev."
+        description="Configure chamadas HTTP e integrações externas, no estilo operacional."
       >
         <Button asChild className="gap-2">
           <Link to="/settings/integrations/new">

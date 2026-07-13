@@ -15,7 +15,6 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 export default function App(): JSX.Element {
   const setTimers = useTimerStore((s) => s.setTimers)
   const completeSessionCheck = useAuthStore((s) => s.completeSessionCheck)
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isSessionReady = useAuthStore((s) => s.isSessionReady)
 
   useEffect(() => {
@@ -26,13 +25,13 @@ export default function App(): JSX.Element {
   }, [completeSessionCheck])
 
   useEffect(() => {
-    if (!isSessionReady || !isAuthenticated) return
+    if (!isSessionReady) return
 
     ipc.getActiveTimers().then(setTimers).catch(console.error)
 
     const unsubscribe = ipc.onTimerTick(setTimers)
     return unsubscribe
-  }, [isSessionReady, isAuthenticated, setTimers])
+  }, [isSessionReady, setTimers])
 
   return (
     <ThemeProvider>

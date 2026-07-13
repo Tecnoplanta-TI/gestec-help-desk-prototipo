@@ -32,7 +32,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
 }
 
 function formatError(error: unknown): string {
-  return getIpcErrorMessage(error, { fallback: 'Não foi possível concluir a operação.' })
+  return getIpcErrorMessage(error, { fallback: 'Nao foi possivel concluir a operacao.' })
 }
 
 export default function UsersPage(): JSX.Element {
@@ -47,12 +47,10 @@ export default function UsersPage(): JSX.Element {
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newRole, setNewRole] = useState<UserRole>('member')
-  const [newPassword, setNewPassword] = useState('')
 
   const [editName, setEditName] = useState('')
   const [editEmail, setEditEmail] = useState('')
   const [editRole, setEditRole] = useState<UserRole>('member')
-  const [resetPassword, setResetPassword] = useState('')
 
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) ?? null,
@@ -85,7 +83,6 @@ export default function UsersPage(): JSX.Element {
     setEditName(selectedUser.name)
     setEditEmail(selectedUser.email)
     setEditRole(selectedUser.role)
-    setResetPassword('')
   }, [selectedUser])
 
   async function handleCreateUser(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -97,13 +94,11 @@ export default function UsersPage(): JSX.Element {
         name: newName.trim(),
         email: newEmail.trim().toLowerCase(),
         role: newRole,
-        password: newPassword,
       })
-      setFeedback(`Usuário ${created.name} criado com sucesso.`)
+      setFeedback(`Usuario ${created.name} criado com sucesso.`)
       setNewName('')
       setNewEmail('')
       setNewRole('member')
-      setNewPassword('')
       setShowCreate(false)
       await loadUsers()
       setSelectedUserId(created.id)
@@ -124,22 +119,8 @@ export default function UsersPage(): JSX.Element {
         email: editEmail.trim().toLowerCase(),
         role: editRole,
       })
-      setFeedback('Usuário atualizado com sucesso.')
+      setFeedback('Usuario atualizado com sucesso.')
       await loadUsers()
-    } catch (err) {
-      setError(formatError(err))
-    }
-  }
-
-  async function handleResetPassword(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault()
-    if (!selectedUser) return
-    setError(null)
-    setFeedback(null)
-    try {
-      await ipc.resetPassword({ userId: selectedUser.id, newPassword: resetPassword })
-      setFeedback('Senha redefinida com sucesso.')
-      setResetPassword('')
     } catch (err) {
       setError(formatError(err))
     }
@@ -164,11 +145,11 @@ export default function UsersPage(): JSX.Element {
   if (!currentUser || currentUser.role !== 'admin') {
     return (
       <div className="space-y-6">
-        <PageHeader title="Usuários" description="Criação e gestão de contas internas." />
+        <PageHeader title="Usuarios" description="Gestao de usuarios locais do modulo." />
         <EmptyState
           icon={ShieldAlert}
           title="Acesso restrito"
-          description="Apenas administradores podem gerenciar contas de usuário."
+          description="Apenas administradores podem gerenciar usuarios."
         />
       </div>
     )
@@ -176,10 +157,10 @@ export default function UsersPage(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Usuários" description="Criação e gestão de contas internas.">
+      <PageHeader title="Usuarios" description="Gestao de usuarios locais do modulo.">
         <Button onClick={() => setShowCreate((prev) => !prev)} className="gap-2">
           <Plus className="h-4 w-4" />
-          {showCreate ? 'Fechar formulário' : 'Novo usuário'}
+          {showCreate ? 'Fechar formulario' : 'Novo usuario'}
         </Button>
       </PageHeader>
 
@@ -189,17 +170,17 @@ export default function UsersPage(): JSX.Element {
       {showCreate ? (
         <Card className="surface-card animate-in fade-in slide-in-from-top-1 duration-300">
           <CardHeader>
-            <CardTitle className="text-lg">Criar novo usuário</CardTitle>
+            <CardTitle className="text-lg">Criar novo usuario</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreateUser}>
+            <form className="grid gap-4 md:grid-cols-3" onSubmit={handleCreateUser}>
               <div className="space-y-2">
                 <Label htmlFor="new-name">Nome completo</Label>
                 <Input
                   id="new-name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Nome do usuário"
+                  placeholder="Nome do usuario"
                   minLength={2}
                   required
                 />
@@ -230,20 +211,8 @@ export default function UsersPage(): JSX.Element {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-password">Senha inicial</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Mínimo 8 caracteres"
-                  minLength={8}
-                  required
-                />
-              </div>
-              <div className="flex gap-2 md:col-span-2">
-                <Button type="submit">Criar usuário</Button>
+              <div className="flex gap-2 md:col-span-3">
+                <Button type="submit">Criar usuario</Button>
                 <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>
                   Cancelar
                 </Button>
@@ -258,7 +227,7 @@ export default function UsersPage(): JSX.Element {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Users className="h-4 w-4 text-muted-foreground" />
-              Contas cadastradas
+              Usuarios cadastrados
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -268,7 +237,7 @@ export default function UsersPage(): JSX.Element {
               </div>
             ) : users.length === 0 ? (
               <div className="p-4">
-                <EmptyState icon={Users} title="Nenhum usuário" description="Crie a primeira conta." />
+                <EmptyState icon={Users} title="Nenhum usuario" description="Crie o primeiro usuario." />
               </div>
             ) : (
               <ul className="max-h-[520px] divide-y overflow-y-auto">
@@ -297,18 +266,18 @@ export default function UsersPage(): JSX.Element {
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card className="surface-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <UserCog className="h-4 w-4 text-muted-foreground" />
-                Editar usuário
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!selectedUser ? (
-                <p className="text-sm text-muted-foreground">Selecione um usuário para editar.</p>
-              ) : (
+        <Card className="surface-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <UserCog className="h-4 w-4 text-muted-foreground" />
+              Editar usuario
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!selectedUser ? (
+              <p className="text-sm text-muted-foreground">Selecione um usuario para editar.</p>
+            ) : (
+              <div className="space-y-6">
                 <form className="grid gap-4 md:grid-cols-3" onSubmit={handleUpdateUser}>
                   <div className="space-y-2">
                     <Label htmlFor="edit-name">Nome</Label>
@@ -345,57 +314,24 @@ export default function UsersPage(): JSX.Element {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="md:col-span-3">
+                  <div className="flex flex-wrap gap-2 md:col-span-3">
                     <Button type="submit" variant="secondary">
-                      Salvar alterações
+                      Salvar alteracoes
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={selectedUser.active ? 'destructive' : 'default'}
+                      onClick={() => void handleToggleActive(selectedUser)}
+                      disabled={selectedUser.id === currentUser.id && selectedUser.active}
+                    >
+                      {selectedUser.active ? 'Desativar usuario' : 'Reativar usuario'}
                     </Button>
                   </div>
                 </form>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="surface-card">
-            <CardHeader>
-              <CardTitle className="text-base">Segurança da conta</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!selectedUser ? (
-                <p className="text-sm text-muted-foreground">
-                  Selecione um usuário para gerenciar a segurança.
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={handleResetPassword}>
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor="reset-password">Nova senha</Label>
-                      <Input
-                        id="reset-password"
-                        type="password"
-                        value={resetPassword}
-                        onChange={(e) => setResetPassword(e.target.value)}
-                        placeholder="Mínimo 8 caracteres"
-                        minLength={8}
-                        required
-                      />
-                    </div>
-                    <Button type="submit" variant="outline">
-                      Redefinir senha
-                    </Button>
-                  </form>
-
-                  <Button
-                    variant={selectedUser.active ? 'destructive' : 'default'}
-                    onClick={() => void handleToggleActive(selectedUser)}
-                    disabled={selectedUser.id === currentUser.id && selectedUser.active}
-                  >
-                    {selectedUser.active ? 'Desativar conta' : 'Reativar conta'}
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

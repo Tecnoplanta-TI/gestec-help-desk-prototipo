@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react'
+﻿import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table'
 
 export interface CancellationRow {
-  zeevRequestNumber: string
+  requestNumber: string
   justification: string
 }
 
@@ -32,12 +32,12 @@ export function TicketCancellationRepeater({
   }
 
   function addRow(): void {
-    onChange([...rows, { zeevRequestNumber: '', justification: '' }])
+    onChange([...rows, { requestNumber: '', justification: '' }])
   }
 
   function removeRow(index: number): void {
     if (rows.length <= 1) {
-      onChange([{ zeevRequestNumber: '', justification: '' }])
+      onChange([{ requestNumber: '', justification: '' }])
       return
     }
     onChange(rows.filter((_, i) => i !== index))
@@ -75,8 +75,8 @@ export function TicketCancellationRepeater({
                 <TableCell>
                   <Input
                     placeholder="Ex: 370331"
-                    value={row.zeevRequestNumber}
-                    onChange={(e) => updateRow(index, { zeevRequestNumber: e.target.value })}
+                    value={row.requestNumber}
+                    onChange={(e) => updateRow(index, { requestNumber: e.target.value })}
                   />
                 </TableCell>
                 <TableCell>

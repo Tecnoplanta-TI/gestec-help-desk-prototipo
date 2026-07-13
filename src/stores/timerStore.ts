@@ -1,18 +1,6 @@
-/**
- * src/stores/timerStore.ts
- *
- * Estado global dos cronômetros ativos via Zustand.
- * Sincronizado com o Main Process via IPC (evento 'timer:tick').
- */
-
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { ActiveTimer } from '../../shared/types'
-
-function defaultPinnedToSidebar(): boolean {
-  if (typeof window === 'undefined') return false
-  return !window.electronAPI
-}
 
 interface TimerState {
   timers: ActiveTimer[]
@@ -27,7 +15,7 @@ export const useTimerStore = create<TimerState>()(
   persist(
     (set) => ({
       timers: [],
-      pinnedToSidebar: defaultPinnedToSidebar(),
+      pinnedToSidebar: true,
 
       setTimers: (timers) => set({ timers }),
 
@@ -50,12 +38,6 @@ export const useTimerStore = create<TimerState>()(
     {
       name: 'gestec-timer-ui',
       version: 1,
-      migrate: (persistedState, version) => {
-        if (version < 1 && typeof window !== 'undefined' && !window.electronAPI) {
-          return { pinnedToSidebar: true }
-        }
-        return persistedState as { pinnedToSidebar: boolean }
-      },
       partialize: (state) => ({ pinnedToSidebar: state.pinnedToSidebar }),
     },
   ),

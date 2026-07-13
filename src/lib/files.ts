@@ -1,13 +1,3 @@
-/**
- * src/lib/files.ts
- *
- * Utilitários de arquivo do Renderer.
- */
-
-/**
- * Lê um `File` e retorna seu conteúdo em base64 (sem o prefixo data URL),
- * pronto para envio ao Main Process via IPC.
- */
 export async function fileToBase64(file: File): Promise<string> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()

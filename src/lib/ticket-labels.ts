@@ -1,11 +1,11 @@
-import type { ServiceGroup, TicketLevel, TicketPriority, TicketType } from '../../shared/types'
+﻿import type { ServiceGroup, TicketLevel, TicketPriority, TicketType } from '../../shared/types'
 
 export const TICKET_TYPE_LABEL: Record<TicketType, string> = {
   incident: 'Incidente',
   service_interruption: 'Interrupção de serviço',
   improvement: 'Melhoria',
   request: 'Solicitação',
-  cancellation: 'Cancelamento Zeev',
+  cancellation: 'Cancelamento de solicitação',
 }
 
 export const PRIORITY_LABEL: Record<TicketPriority, string> = {

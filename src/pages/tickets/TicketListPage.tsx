@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Plus, Ticket as TicketIcon } from 'lucide-react'
 import type { CreateTicketPayload, Ticket, TicketPriority, TicketListScope, Workflow } from '../../../shared/types'
 import { TICKET_LIST_SCOPE_LABELS } from '../../../shared/lib/ticket-access'
-import { ZEEV_STEP_LABELS } from '../../../shared/lib/zeev-steps'
+import { WORKFLOW_STEP_LABELS } from '../../../shared/lib/workflow-steps'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { useAuthStore } from '@/stores/authStore'
@@ -81,7 +81,7 @@ export default function TicketListPage(): JSX.Element {
   const statuses = useMemo(() => ['all', ...new Set(tickets.map((ticket) => ticket.status))], [tickets])
 
   const stepLabelById = useMemo(() => {
-    const map = new Map<string, string>(Object.entries(ZEEV_STEP_LABELS))
+    const map = new Map<string, string>(Object.entries(WORKFLOW_STEP_LABELS))
     for (const workflow of workflows) {
       for (const step of workflow.steps) {
         map.set(step.id, step.name)
@@ -163,7 +163,7 @@ export default function TicketListPage(): JSX.Element {
     <div className="space-y-6">
       <PageHeader
         title="Acompanhar solicitações"
-        description="Visualize e filtre os chamados conforme sua participação, como no Zeev."
+        description="Visualize e filtre os chamados conforme sua participação, conforme sua participação."
       >
         <Button
           onClick={() => {

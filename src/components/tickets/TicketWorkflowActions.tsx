@@ -1,26 +1,26 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Ticket, User } from '../../../shared/types'
-import { ZEEV_STEPS } from '../../../shared/lib/zeev-steps'
+import { WORKFLOW_STEPS } from '../../../shared/lib/workflow-steps'
 import { hasPermission } from '../../../shared/lib/permissions'
 import { ipc } from '@/lib/ipc'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-interface TicketZeevActionsProps {
+interface TicketWorkflowActionsProps {
   ticket: Ticket
   user: User | null
   users: User[]
   onUpdated: (ticket: Ticket) => void
 }
 
-export function TicketZeevActions({
+export function TicketWorkflowActions({
   ticket,
   user,
   users,
   onUpdated,
-}: TicketZeevActionsProps): JSX.Element | null {
+}: TicketWorkflowActionsProps): JSX.Element | null {
   const [justification, setJustification] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -35,7 +35,7 @@ export function TicketZeevActions({
     }
   }
 
-  if (ticket.status === ZEEV_STEPS.awaiting_it_manager_approval && hasPermission(user, 'it_manager')) {
+  if (ticket.status === WORKFLOW_STEPS.awaiting_it_manager_approval && hasPermission(user, 'it_manager')) {
     return (
       <Card>
         <CardHeader>
@@ -78,7 +78,7 @@ export function TicketZeevActions({
     )
   }
 
-  if (ticket.status === ZEEV_STEPS.awaiting_app_manager_approval && hasPermission(user, 'app_manager')) {
+  if (ticket.status === WORKFLOW_STEPS.awaiting_app_manager_approval && hasPermission(user, 'app_manager')) {
     return (
       <Card>
         <CardHeader>
@@ -117,7 +117,7 @@ export function TicketZeevActions({
     )
   }
 
-  if (ticket.status === ZEEV_STEPS.in_triage && hasPermission(user, 'triage')) {
+  if (ticket.status === WORKFLOW_STEPS.in_triage && hasPermission(user, 'triage')) {
     return (
       <Card>
         <CardHeader>
@@ -137,7 +137,7 @@ export function TicketZeevActions({
   }
 
   if (
-    ticket.status === ZEEV_STEPS.awaiting_cancellation_approval &&
+    ticket.status === WORKFLOW_STEPS.awaiting_cancellation_approval &&
     hasPermission(user, 'cancellation_approver')
   ) {
     return (
@@ -177,7 +177,7 @@ export function TicketZeevActions({
     )
   }
 
-  if (ticket.status === ZEEV_STEPS.awaiting_service && ticket.assigneeId === user.id) {
+  if (ticket.status === WORKFLOW_STEPS.awaiting_service && ticket.assigneeId === user.id) {
     return (
       <Card>
         <CardHeader>
@@ -195,7 +195,7 @@ export function TicketZeevActions({
     )
   }
 
-  if (ticket.status === ZEEV_STEPS.in_service && (ticket.assigneeId === user.id || hasPermission(user, 'admin'))) {
+  if (ticket.status === WORKFLOW_STEPS.in_service && (ticket.assigneeId === user.id || hasPermission(user, 'admin'))) {
     return (
       <Card>
         <CardHeader>
@@ -213,7 +213,7 @@ export function TicketZeevActions({
     )
   }
 
-  if (ticket.status === ZEEV_STEPS.awaiting_completion_approval && hasPermission(user, 'triage')) {
+  if (ticket.status === WORKFLOW_STEPS.awaiting_completion_approval && hasPermission(user, 'triage')) {
     return (
       <Card>
         <CardHeader>
@@ -231,7 +231,7 @@ export function TicketZeevActions({
     )
   }
 
-  if (ticket.status === ZEEV_STEPS.awaiting_evaluation) {
+  if (ticket.status === WORKFLOW_STEPS.awaiting_evaluation) {
     const isRequester =
       ticket.requesterUserId === user.id ||
       ticket.requester.email.toLowerCase() === user.email.toLowerCase()

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -13,8 +13,8 @@ import {
   Upload,
 } from 'lucide-react'
 import type { AttachmentFile, Expense, Ticket, User, Workflow } from '../../../shared/types'
-import { ZEEV_STEP_LABELS } from '../../../shared/lib/zeev-steps'
-import { TicketZeevActions } from '@/components/tickets/TicketZeevActions'
+import { WORKFLOW_STEP_LABELS } from '../../../shared/lib/workflow-steps'
+import { TicketWorkflowActions } from '@/components/tickets/TicketWorkflowActions'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
 import { fileToBase64 } from '@/lib/files'
@@ -315,7 +315,7 @@ export default function TicketDetailPage(): JSX.Element {
       {feedback ? <StatusAlert variant="success" message={feedback} /> : null}
 
       {ticket ? (
-        <TicketZeevActions
+        <TicketWorkflowActions
           ticket={ticket}
           user={currentUser}
           users={users}

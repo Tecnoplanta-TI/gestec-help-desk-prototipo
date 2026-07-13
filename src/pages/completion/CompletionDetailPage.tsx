@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react'
 import type { Ticket, User } from '../../../shared/types'
 import { formatDuration } from '../../../shared/lib/time'
-import { ZEEV_STEPS } from '../../../shared/lib/zeev-steps'
+import { WORKFLOW_STEPS } from '../../../shared/lib/workflow-steps'
 import { hasPermission } from '../../../shared/lib/permissions'
 import {
   LEVEL_LABEL,
@@ -117,7 +117,7 @@ export default function CompletionDetailPage(): JSX.Element {
     )
   }
 
-  if (ticket.status !== ZEEV_STEPS.awaiting_completion_approval) {
+  if (ticket.status !== WORKFLOW_STEPS.awaiting_completion_approval) {
     return (
       <div className="space-y-4">
         <StatusAlert variant="error" message="Este ticket não aguarda aprovação de conclusão." />
@@ -236,7 +236,7 @@ export default function CompletionDetailPage(): JSX.Element {
               </CardHeader>
               <CardContent>
                 <dl>
-                  <InfoRow label="Criar usuário no Zeev?" value={boolLabel(ticket.createZeevUser)} />
+                  <InfoRow label="Criar usuário na plataforma?" value={boolLabel(ticket.createPlatformUser)} />
                   <InfoRow label="Criar e-mail?" value={boolLabel(ticket.createEmail)} />
                   <InfoRow
                     label="Realizar checklist?"
@@ -287,6 +287,7 @@ export default function CompletionDetailPage(): JSX.Element {
             </CardContent>
           </Card>
 
+          <Card className="surface-card">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Apontamentos</CardTitle>
             </CardHeader>

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import type { AppConfig, Ticket } from '../../../shared/types'
-import { ZEEV_STEPS } from '../../../shared/lib/zeev-steps'
+import { WORKFLOW_STEPS } from '../../../shared/lib/workflow-steps'
 import { isTicketRequester } from '../../../shared/lib/ticket-access'
 import { ipc } from '@/lib/ipc'
 import { getIpcErrorMessage } from '@/lib/errors'
@@ -60,7 +60,7 @@ export default function TicketEvaluationPage(): JSX.Element {
   const canEvaluate =
     ticket &&
     currentUser &&
-    ticket.status === ZEEV_STEPS.awaiting_evaluation &&
+    ticket.status === WORKFLOW_STEPS.awaiting_evaluation &&
     isTicketRequester(ticket, currentUser)
 
   async function handleSubmit(): Promise<void> {

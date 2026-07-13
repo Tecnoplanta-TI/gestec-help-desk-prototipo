@@ -19,7 +19,6 @@ const config: Config = {
   content: [
     './index.html',
     './src/**/*.{ts,tsx}',
-    './electron/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {
@@ -61,6 +60,13 @@ const config: Config = {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
+        },
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar))',
+          foreground: 'hsl(var(--sidebar-foreground))',
+          border: 'hsl(var(--sidebar-border))',
+          accent: 'hsl(var(--sidebar-accent))',
+          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
         },
         // Cores de SLA (usadas em badges e indicadores)
         sla: {
