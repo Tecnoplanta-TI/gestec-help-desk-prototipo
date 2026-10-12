@@ -1273,7 +1273,15 @@ export const localAPI: GestecAPI = {
       return setTicketStatus(
         {
           ...ticket,
-          sla: payload.approved ? { ...ticket.sla, resolvedAt: now(), status: 'ok' } : ticket.sla,
+          sla: payload.approved
+            ? {
+                ...ticket.sla,
+                resolvedAt: now(),
+                status: ticket.sla.deadline
+                  ? getSlaStatus(ticket.createdAt, ticket.sla.deadline)
+                  : 'ok',
+              }
+            : ticket.sla,
         },
         next,
         user.id,
